@@ -21,6 +21,7 @@ class MixingExtruder:
         self.heater = pheaters.lookup_heater(self.main_extruder)
         self.extruders = [self.printer.lookup_object(extruder) for extruder in extruders]
         self.mixing = [0 if p else 1 for p in range(len(self.extruders))]
+        self.positions = [0. for p in range(len(self.extruders))]
         self.ratios = [0 for p in range(len(self.extruders))]
         logging.info("MixingExtruder extruders=%s", ", ".join(self.extruders))
         # Register commands
@@ -44,10 +45,12 @@ class MixingExtruder:
             return (self.instant_corner_v / abs(m * diff_r))**2
         return move.max_cruise_v2
     def _scale_move(self, move, idx):
-        toolhead = self.printer.lookup_object('toolhead')
         mixing = self.mixing[idx]
-        extrude_end_pos = move.start_pos[3] + mixing * (move.end_pos[3] - move.start_pos[3])
-        return Move(toolhead, move.start_pos,
+        extrude_start_pos = self.positions[idx]
+        extrude_end_pos = extrude_start_pos + mixing * (move.end_pos[3] - move.start_pos[3])
+        # TODO: create reduced MixingMove
+        return Move(self.printer.lookup_object('toolhead'),
+                    move.start_pos[0:3] + (extrude_start_pos,),
                     move.end_pos[:3] + (extrude_end_pos,),
                     (move.move_d / move.min_move_t) if move.is_kenimatic_move else (mixing * move.move_d / move.min_move_t))
     def _check_move(self, scaled_move, move):
@@ -79,13 +82,14 @@ class MixingExtruder:
                 "See the 'max_extrude_cross_section' config option for details"
                 % (area, self.max_extrude_ratio * self.filament_area))
     def check_move(self, move):
-        for i, extruder in enumerate(self.extruders):
-            scaled_move = self._scale_move(move, i)
+        for idx, extruder in enumerate(self.extruders):
+            scaled_move = self._scale_move(move, idx)
             self._check_move(scaled_move, move)
     def move(self, print_time, move):
-        for i, extruder in enumerate(self.extruders):
-            scaled_move = self._scale_move(move, i)
+        for idx, extruder in enumerate(self.extruders):
+            scaled_move = self._scale_move(move, idx)
             extruder.move(print_time, scaled_move)
+            self.positions[idx] = scaled_move.end_pos[3]
     def get_status(self, eventtime):
         return dict(self.stats(eventtime),
                     ticks=", ".join(extruder.stepper.get_mcu_position() for extruder in self.extruders)
