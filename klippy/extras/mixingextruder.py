@@ -92,7 +92,7 @@ class MixingExtruder:
             self.positions[idx] = scaled_move.end_pos[3]
     def get_status(self, eventtime):
         return dict(self.stats(eventtime),
-                    ticks=", ".join(extruder.stepper.get_mcu_position() for extruder in self.extruders)
+                    ticks=", ".join(extruder.stepper.get_mcu_position() for extruder in self.extruders),
                     extruders=", ".join(extruder.name for extruder in self.extruders))
     def get_name(self):
         return self.name
@@ -117,7 +117,7 @@ class MixingExtruder:
         s = sum(weighting)
         if not 0 <= s < 1:
             raise gcmd.error("Could not save ratio: its empty")
-        for i, v in enumerate(weightig):
+        for i, v in enumerate(weighting):
             self.mixing[i] = v/s
     cmd_ACTIVATE_EXTRUDER_help = "Change the active extruder"
     def cmd_ACTIVATE_EXTRUDER(self, gcmd):
