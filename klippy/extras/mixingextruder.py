@@ -113,7 +113,7 @@ class MixingExtruder:
                 self.positions[idx] = scaled_move.end_pos[3]
     def get_status(self, eventtime):
         return dict(self.stats(eventtime),
-                    ticks=", ".join(extruder.stepper.get_mcu_position() for extruder in self.extruders)
+                    ticks=", ".join(extruder.stepper.get_mcu_position() for extruder in self.extruders),
                     extruders=", ".join(extruder.name for extruder in self.extruders))
     def get_name(self):
         return self.name
