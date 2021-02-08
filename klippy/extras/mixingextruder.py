@@ -27,6 +27,7 @@ class MixingMove:
 class MixingExtruder:
     def __init__(self, config, idx):
         self.printer = config.get_printer()
+        self.activated = False
         self.name = config.get_name()
         extruders = [e.strip() for e in config.get('extruders', None).split(",")]
         if not len(extruders):
@@ -35,6 +36,28 @@ class MixingExtruder:
         self.main_extruder = extruders[0]
         self.mixing_extruders = {} if idx == 0 else self.printer.lookup_object("mixingextruder").mixing_extruders
         self.mixing_extruders[idx] = self
+        self.mixing = [0 if p else 1 for p in range(len(extruders))]
+        self.positions = [0. for p in range(len(extruders))]
+        self.ratios = [0 for p in range(len(extruders))]
+        gcode = self.printer.lookup_object('gcode')
+        logging.info("MixingExtruder extruders=%s", ", ".join(extruders))
+        # Register commands
+        if self.name == 'mixingextruder':
+            gcode.register_command("M163", self.cmd_M163)
+            gcode.register_command("M164", self.cmd_M164)
+            gcode.register_command("M567", self.cmd_M567)
+            self.orig_G1 = gcode.register_command("G1", None)
+            gcode.register_command("G1", self.cmd_G1)
+        gcode.register_mux_command("ACTIVATE_EXTRUDER", "EXTRUDER",
+                                   self.name, self.cmd_ACTIVATE_EXTRUDER,
+                                   desc=self.cmd_ACTIVATE_EXTRUDER_help)
+
+    def _activate(self):
+        if self.activated:
+            return
+        self.activated = True
+        if self.mixing_extruders[0] != self:
+            return
         pheaters = self.printer.load_object(config, 'heaters')
         try:
             self.heater = pheaters.lookup_heater(self.main_extruder)
@@ -47,23 +70,7 @@ class MixingExtruder:
         except Exception as e:
             self.extruders = []
             logging.error("no extruders found: %s" % (", ".join(extruders)), e)
-        self.mixing = [0 if p else 1 for p in range(len(self.extruders))]
-        self.positions = [0. for p in range(len(self.extruders))]
-        self.ratios = [0 for p in range(len(self.extruders))]
-        logging.info("MixingExtruder extruders=%s", ", ".join(self.extruders))
-        # Register commands
-        gcode = self.printer.lookup_object('gcode')
-        toolhead = self.printer.lookup_object('toolhead')
-        if self.name == 'mixingextruder':
-            toolhead.set_extruder(self, 0.)
-            gcode.register_command("M163", self.cmd_M163)
-            gcode.register_command("M164", self.cmd_M164)
-            gcode.register_command("M567", self.cmd_M567)
-            self.orig_G1 = gcode.register_command("G1", None)
-            gcode.register_command("G1", self.cmd_G1)
-        gcode.register_mux_command("ACTIVATE_EXTRUDER", "EXTRUDER",
-                                   self.name, self.cmd_ACTIVATE_EXTRUDER,
-                                   desc=self.cmd_ACTIVATE_EXTRUDER_help)
+
     def update_move_time(self, flush_time):
         for extruder in self.extruders:
             extruder.update_move_time(flush_time)
@@ -185,6 +192,7 @@ class MixingExtruder:
             gcmd._need_ack))
     cmd_ACTIVATE_EXTRUDER_help = "Change the active extruder"
     def cmd_ACTIVATE_EXTRUDER(self, gcmd):
+        self._activate()
         toolhead = self.printer.lookup_object('toolhead')
         if toolhead.get_extruder() is self:
             gcmd.respond_info("Extruder %s already active" % (self.name,))
