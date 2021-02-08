@@ -25,7 +25,7 @@ class MixingMove:
         self.start_pos = (x, y, z, e)
 
 class MixingExtruder:
-    def __init__(self, configi, idx):
+    def __init__(self, config, idx):
         self.printer = config.get_printer()
         self.name = config.get_name()
         extruders = [e.strip() for e in config.get('extruders', None).split(",")]
