@@ -46,6 +46,9 @@ class MixingExtruder:
         gcode.register_mux_command("ACTIVATE_EXTRUDER", "EXTRUDER",
                                    self.name, self.cmd_ACTIVATE_EXTRUDER,
                                    desc=self.cmd_ACTIVATE_EXTRUDER_help)
+        gcode.register_mux_command("MIXING_STATUS", "EXTRUDER",
+                                   self.name, self.cmd_MIXING_STATUS,
+                                   desc=self.cmd_MIXING_STATUS_help)
     def _activate(self):
         if self.activated:
             return
@@ -203,6 +206,11 @@ class MixingExtruder:
         toolhead.flush_step_generation()
         toolhead.set_extruder(self, self.stepper.get_commanded_position())
         self.printer.send_event("extruder:activate_extruder")
+    cmd_MIXING_STATUS_help = "Display the status of teh given MixingExtruder"
+    def cmd_MIXING_STATUS(self, gcmd):
+        eventtime = self.printer.get_reactor().monotonic()
+        status = self.get_status(eventtime)
+        gcmd.respond_info(", ".join("%s=%s" % (k, v) for k, v in status.items()))
 
 def load_config(config):
     printer = config.get_printer()
