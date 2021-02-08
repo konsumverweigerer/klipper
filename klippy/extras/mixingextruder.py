@@ -34,6 +34,7 @@ class MixingExtruder:
             raise self._mcu.get_printer().config_error(
                 "No extruders configured for mixing")
         self.main_extruder = None
+        self.extruders = []
         self.heater = None
         self.mixing_extruders = {} if idx == 0 else self.printer.lookup_object("mixingextruder").mixing_extruders
         self.mixing_extruders[idx] = self
@@ -208,6 +209,7 @@ class MixingExtruder:
         self.printer.send_event("extruder:activate_extruder")
     cmd_MIXING_STATUS_help = "Display the status of teh given MixingExtruder"
     def cmd_MIXING_STATUS(self, gcmd):
+        self._activate()
         eventtime = self.printer.get_reactor().monotonic()
         status = self.get_status(eventtime)
         gcmd.respond_info(", ".join("%s=%s" % (k, v) for k, v in status.items()))
