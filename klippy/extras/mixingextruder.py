@@ -40,8 +40,11 @@ class MixingExtruder:
             self.heater = pheaters.lookup_heater(self.main_extruder)
         except Exception as e:
             logging.error("no heaters found: %s" % (str(pheaters.get_all_heaters())), e)
-        self.extruders = [self.printer.lookup_object(extruder)
-                          for extruder in extruders]
+        try:
+            self.extruders = [self.printer.lookup_object(extruder)
+                              for extruder in extruders]
+        except Exception as e:
+            logging.error("no extruders found: %s" % (", ".join(extruders)), e)
         self.mixing = [0 if p else 1 for p in range(len(self.extruders))]
         self.positions = [0. for p in range(len(self.extruders))]
         self.ratios = [0 for p in range(len(self.extruders))]
