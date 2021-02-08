@@ -25,7 +25,7 @@ class MixingMove:
         self.start_pos = (x, y, z, e)
 
 class MixingExtruder:
-    def __init__(self, config):
+    def __init__(self, configi, idx):
         self.printer = config.get_printer()
         self.name = config.get_name()
         extruders = [e.strip() for e in config.get('extruders', None).split(",")]
@@ -33,6 +33,8 @@ class MixingExtruder:
             raise self._mcu.get_printer().config_error(
                 "No extruders configured for mixing")
         self.main_extruder = extruders[0]
+        self.mixing_extruders = {} if idx == 0 else self.printer.lookup_object("mixingextruder").mixing_extruders
+        self.mixing_extruders[idx] = self
         pheaters = self.printer.load_object(config, 'heaters')
         self.heater = pheaters.lookup_heater(self.main_extruder)
         self.extruders = [self.printer.lookup_object(extruder)
