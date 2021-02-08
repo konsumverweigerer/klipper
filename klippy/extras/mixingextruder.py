@@ -46,7 +46,6 @@ class MixingExtruder:
         gcode.register_mux_command("ACTIVATE_EXTRUDER", "EXTRUDER",
                                    self.name, self.cmd_ACTIVATE_EXTRUDER,
                                    desc=self.cmd_ACTIVATE_EXTRUDER_help)
-
     def _activate(self):
         if self.activated:
             return
@@ -135,7 +134,11 @@ class MixingExtruder:
     def get_heater(self):
         return self.heater
     def stats(self, eventtime):
-        return self.heater.stats(eventtime)
+        if self.name == 'mixingextruder':
+            return False, "positions: %s, mixing: %s" % (
+                ", ".join("%f" % (m) for m in self.positions),
+                ", ".join("%f" % (m) for m in self.mixing))
+        return False, "mixing: %s" % (", ".join("%f" % (m) for m in self.mixing))
     def cmd_M163(self, gcmd):
         index = gcmd.get_int('S', None, minval=0, maxval=len(self.extruders))
         weight = gcmd.get_float('P', 0., minval=0.)
