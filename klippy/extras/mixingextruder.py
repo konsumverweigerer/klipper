@@ -28,7 +28,7 @@ class MixingExtruder:
     def __init__(self, config):
         self.printer = config.get_printer()
         self.name = config.get_name()
-        extruders = config.get('extruders', None)
+        extruders = [e.strip() for e in config.get('extruders', None).split(",")]
         if not len(extruders):
             raise self._mcu.get_printer().config_error(
                 "No extruders configured for mixing")
