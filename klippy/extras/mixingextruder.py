@@ -38,7 +38,7 @@ class MixingExtruder:
         self.mixing_extruders = {} if idx == 0 else self.printer.lookup_object("mixingextruder").mixing_extruders
         self.mixing_extruders[idx] = self
         self.mixing = [0 if p else 1 for p in range(len(self.extruder_names))]
-        self.positions = [0. for p in range(len(self.extruder_names))]
+        self.positions = [0. for p in range(len(self.extruder_names))] if idx == 0 else self.mixing_extruders[0].positions
         self.ratios = [0 for p in range(len(self.extruder_names))]
         gcode = self.printer.lookup_object('gcode')
         logging.info("MixingExtruder extruders=%s", ", ".join(self.extruder_names))
@@ -126,8 +126,9 @@ class MixingExtruder:
                 extruder.move(print_time, scaled_move)
                 self.positions[idx] = scaled_move.end_pos[3]
     def get_status(self, eventtime):
-        return dict(self.stats(eventtime),
-                    ticks=", ".join(extruder.stepper.get_mcu_position() for extruder in self.extruders),
+        return dict(mixing=", ".join("%f" % (m) for m in self.mixing),
+                    positions=", ".join("%f" % (m) for m in self.positions),
+                    ticks=", ".join("%f" % (extruder.stepper.get_mcu_position()) for extruder in self.extruders),
                     extruders=", ".join(extruder.name for extruder in self.extruders))
     def get_name(self):
         return self.name
@@ -135,7 +136,7 @@ class MixingExtruder:
         return self.heater
     def stats(self, eventtime):
         if self.name == 'mixingextruder':
-            return False, "positions: %s, mixing: %s" % (
+            return False, "positions: %s mixing: %s" % (
                 ", ".join("%f" % (m) for m in self.positions),
                 ", ".join("%f" % (m) for m in self.mixing))
         return False, "mixing: %s" % (", ".join("%f" % (m) for m in self.mixing))
