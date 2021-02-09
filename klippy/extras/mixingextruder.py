@@ -90,8 +90,8 @@ class MixingExtruder:
                           move.axes_d[0], move.axes_d[1], move.axes_d[2], mixing * move.axes_d[3],
                           move.axes_r[0], move.axes_r[1], move.axes_r[2], mixing * move.axes_r[3],
                           move.move_d, move.accel,
-                          move.start_v if hasattr(move, "start_v") else sqrt(move.max_start_v2),
-                          move.cruise_v if hasattr(move, "cruise_v") else sqrt(move.max_cruise_v2),
+                          move.start_v if hasattr(move, "start_v") else 0.,
+                          move.cruise_v if hasattr(move, "cruise_v") else math.sqrt(move.max_cruise_v2),
                           move.accel_t if hasattr(move, "accel_t") else 0.,
                           move.cruise_t if hasattr(move, "cruise_t") else move.min_move_t,
                           move.decel_t if hasattr(move, "decel_t") else 0.)
