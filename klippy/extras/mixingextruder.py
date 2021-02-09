@@ -23,6 +23,7 @@ class MixingMove:
         self.start_v, self.cruise_v = velocity_start, velocity_cruise
         self.accel_t, self.cruise_t, self.decel_t = time_accel, time_cruise, time_decel
         self.start_pos = (x, y, z, e)
+        self.end_pos = tuple(sum(s) for s in zip(self.start_pos, self.axes_d))
 
 class MixingExtruder:
     def __init__(self, config, idx):
