@@ -81,7 +81,7 @@ class MixingExtruder:
         diff_r = move.axes_r[3] - prev_move.axes_r[3]
         if diff_r:
             m = max(self.mixing)
-            return (self.instant_corner_v / abs(m * diff_r))**2
+            return (self.main_extruder.instant_corner_v / abs(m * diff_r))**2
         return move.max_cruise_v2
     def _scale_move(self, move, idx):
         mixing = self.mixing[idx]
@@ -109,7 +109,7 @@ class MixingExtruder:
                 raise self.printer.command_error(
                     "Extrude only move too long (%.3fmm vs %.3fmm)\n"
                     "See the 'max_extrude_only_distance' config"
-                    " option for details" % (axis_d, self.max_e_dist))
+                    " option for details" % (axis_d, self.main_extruder.max_e_dist))
             inv_extrude_r = 1. / abs(axis_r)
             move.limit_speed(self.main_extruder.max_e_velocity * inv_extrude_r,
                              self.main_extruder.max_e_accel * inv_extrude_r)
