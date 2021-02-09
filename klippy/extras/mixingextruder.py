@@ -141,6 +141,10 @@ class MixingExtruder:
                     positions=", ".join("%0.2fmm" % (m) for m in self.positions),
                     ticks=", ".join("%0.2f" % (extruder.stepper.get_mcu_position()) for extruder in self.extruders),
                     extruders=", ".join(extruder.name for extruder in self.extruders))
+    def _reset_positions(self):
+        pos = [extruder.stepper.get_mcu_position() for extruder in self.extruders]
+        for i, p in enumerate(pos):
+            self.positions[i] = p
     def get_commanded_position(self):
         return self.commanded_pos
     def get_name(self):
@@ -185,8 +189,8 @@ class MixingExtruder:
         if min(weights) < 0:
             raise gcmd.error("Negative weight not allowed")
         s = sum(weights)
-        if not 0 <= s < 1:
-            raise gcmd.error("Could not save ratio: its empty")
+        if not (0 <= s < 1):
+            raise gcmd.error("Could not save ratio: out of bounds %0.2f" % (s))
         for i, v in enumerate(weights):
             mixingextruder.mixing[i] = v/s
     def cmd_G1(self, gcmd):
@@ -216,6 +220,7 @@ class MixingExtruder:
         gcmd.respond_info("Activating extruder %s" % (self.name,))
         toolhead.flush_step_generation()
         toolhead.set_extruder(self, self.get_commanded_position())
+        self._reset_positions()
         self.printer.send_event("extruder:activate_extruder")
     cmd_MIXING_STATUS_help = "Display the status of the given MixingExtruder"
     def cmd_MIXING_STATUS(self, gcmd):
