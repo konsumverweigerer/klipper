@@ -89,8 +89,12 @@ class MixingExtruder:
         return MixingMove(move.start_pos[0], move.start_pos[1], move.start_pos[2], self.positions[idx],
                           move.axes_d[0], move.axes_d[1], move.axes_d[2], mixing * move.axes_d[3],
                           move.axes_r[0], move.axes_r[1], move.axes_r[2], mixing * move.axes_r[3],
-                          move.move_d, move.accel, move.start_v, move.cruise_v,
-                          move.accel_t, move.cruise_t, move.decel_t)
+                          move.move_d, move.accel,
+                          move.start_v if hasattr(move, "start_v") else sqrt(move.max_start_v2),
+                          move.cruise_v if hasattr(move, "cruise_v") else sqrt(move.max_cruise_v2),
+                          move.accel_t if hasattr(move, "accel_t") else 0.,
+                          move.cruise_t if hasattr(move, "cruise_t") else move.min_move_t,
+                          move.decel_t if hasattr(move, "decel_t") else 0.)
     def _check_move(self, scaled_move, move):
         axis_r = scaled_move.axes_r[3]
         axis_d = scaled_move.axes_d[3]
