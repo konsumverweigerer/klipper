@@ -137,12 +137,12 @@ class MixingExtruder:
                 self.positions[idx] = scaled_move.end_pos[3]
         self.commanded_pos = move.end_pos[3]
     def get_status(self, eventtime):
-        return dict(mixing=", ".join("%0.1f%%" % (m * 100.) for m in self.mixing),
-                    positions=", ".join("%0.2fmm" % (m) for m in self.positions),
-                    ticks=", ".join("%0.2f" % (extruder.stepper.get_mcu_position()) for extruder in self.extruders),
-                    extruders=", ".join(extruder.name for extruder in self.extruders))
+        return dict(mixing=",".join("%0.1f%%" % (m * 100.) for m in self.mixing),
+                    positions=",".join("%0.2fmm" % (m) for m in self.positions),
+                    ticks=",".join("%0.2f" % (extruder.stepper.get_mcu_position()) for extruder in self.extruders),
+                    extruders=",".join(extruder.name for extruder in self.extruders))
     def _reset_positions(self):
-        pos = [extruder.stepper.get_mcu_position() for extruder in self.extruders]
+        pos = [extruder.stepper.get_commanded_position() for extruder in self.extruders]
         for i, p in enumerate(pos):
             self.positions[i] = p
     def get_commanded_position(self):
@@ -200,8 +200,6 @@ class MixingExtruder:
             self.orig_G1(gcmd)
             return
         weights = [float(w) for w in weighting.split(":")]
-        if min(weights) < 0:
-            raise gcmd.error("Negative weight not allowed")
         extrude = sum(weights)
         weighting = ":".join("%0.2f" % (w / extrude) for w in weights)
         self.cmd_M567(GCodeCommand(
