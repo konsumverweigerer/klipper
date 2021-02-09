@@ -39,6 +39,7 @@ class MixingExtruder:
         self.mixing_extruders = {} if idx == 0 else self.printer.lookup_object("mixingextruder").mixing_extruders
         self.mixing_extruders[idx] = self
         self.mixing = [0 if p else 1 for p in range(len(self.extruder_names))]
+        self.commanded_pos = 0
         self.positions = [0. for p in range(len(self.extruder_names))] if idx == 0 else self.mixing_extruders[0].positions
         self.ratios = [0 for p in range(len(self.extruder_names))]
         gcode = self.printer.lookup_object('gcode')
@@ -129,21 +130,24 @@ class MixingExtruder:
             if scaled_move:
                 extruder.move(print_time, scaled_move)
                 self.positions[idx] = scaled_move.end_pos[3]
+        self.commanded_pos = move.end_pos[3]
     def get_status(self, eventtime):
-        return dict(mixing=", ".join("%f" % (m) for m in self.mixing),
-                    positions=", ".join("%f" % (m) for m in self.positions),
-                    ticks=", ".join("%f" % (extruder.stepper.get_mcu_position()) for extruder in self.extruders),
+        return dict(mixing=", ".join("%0.1f%%" % (m * 100.) for m in self.mixing),
+                    positions=", ".join("%0.2fmm" % (m) for m in self.positions),
+                    ticks=", ".join("%0.2f" % (extruder.stepper.get_mcu_position()) for extruder in self.extruders),
                     extruders=", ".join(extruder.name for extruder in self.extruders))
+    def get_commanded_position(self):
+        return self.commanded_pos
     def get_name(self):
         return self.name
     def get_heater(self):
         return self.heater
     def stats(self, eventtime):
         if self.name == 'mixingextruder':
-            return False, "positions: %s mixing: %s" % (
-                ", ".join("%f" % (m) for m in self.positions),
-                ", ".join("%f" % (m) for m in self.mixing))
-        return False, "mixing: %s" % (", ".join("%f" % (m) for m in self.mixing))
+            return False, "mixingextruder: positions=%s mixing=%s" % (
+                ",".join("%0.2f" % (m) for m in self.positions),
+                ",".join("%0.2f" % (m) for m in self.mixing))
+        return False, "mixingextruder: mixing=%s" % (",".join("%0.2f" % (m) for m in self.mixing))
     def cmd_M163(self, gcmd):
         index = gcmd.get_int('S', None, minval=0, maxval=len(self.extruders))
         weight = gcmd.get_float('P', 0., minval=0.)
@@ -185,6 +189,7 @@ class MixingExtruder:
         weighting = gcmd.get('E', None)
         if not weighting or ":" not in weighting:
             self.orig_G1(gcmd)
+            return
         weights = [float(w) for w in weighting.split(":")]
         if min(weights) < 0:
             raise gcmd.error("Negative weight not allowed")
@@ -205,9 +210,9 @@ class MixingExtruder:
             return
         gcmd.respond_info("Activating extruder %s" % (self.name,))
         toolhead.flush_step_generation()
-        toolhead.set_extruder(self, self.stepper.get_commanded_position())
+        toolhead.set_extruder(self, self.get_commanded_position())
         self.printer.send_event("extruder:activate_extruder")
-    cmd_MIXING_STATUS_help = "Display the status of teh given MixingExtruder"
+    cmd_MIXING_STATUS_help = "Display the status of the given MixingExtruder"
     def cmd_MIXING_STATUS(self, gcmd):
         self._activate()
         eventtime = self.printer.get_reactor().monotonic()
