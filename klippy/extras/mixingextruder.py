@@ -184,12 +184,12 @@ class MixingExtruder:
                 raise gcmd.error("Invalid extruder index")
         weighting = gcmd.get('E', None)
         if not weighting:
-            raise gcmd.error("No ratio in M567")
+            raise gcmd.error("No weighting in M567")
         weights = [float(w) for w in weighting.split(":")]
         if min(weights) < 0:
             raise gcmd.error("Negative weight not allowed")
         s = sum(weights)
-        if not (0 <= s < 1):
+        if s > 1.01 or s < 0.99:
             raise gcmd.error("Could not save ratio: out of bounds %0.2f" % (s))
         for i, v in enumerate(weights):
             mixingextruder.mixing[i] = v/s
@@ -203,6 +203,7 @@ class MixingExtruder:
         if min(weights) < 0:
             raise gcmd.error("Negative weight not allowed")
         extrude = sum(weights)
+        weighting = ":".join("%0.2f" % (w / extrude) for w in weights)
         self.cmd_M567(GCodeCommand(
             gcode, "M567", "M567 E%s" % (weighting),
             dict(E=weighting), gcmd._need_ack))
