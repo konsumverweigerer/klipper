@@ -25,6 +25,10 @@ class MixingMove:
             time_accel, time_cruise, time_decel
         self.start_pos = (x, y, z, e)
         self.end_pos = tuple(sum(s) for s in zip(self.start_pos, self.axes_d))
+        self.gradient_enabled = False
+        # assumed to be sorted list of ((start, middle, end), (ref1, ref2))
+        self.gradient_heights = []
+        self.gradient_method = 'linear'
 
 
 class MixingExtruder:
@@ -45,16 +49,12 @@ class MixingExtruder:
         self.mixing_extruders = {} if idx == 0 else self.printer.lookup_object(
             "mixingextruder").mixing_extruders
         self.mixing_extruders[idx] = self
-        self.mixing = [0 if p else 1 for p in range(len(self.extruder_names))]
+        self.mixing = self._init_mixings(idx, len(self.extruder_names))
         self.commanded_pos = 0
         self.positions = [0. for p in range(len(self.extruder_names))
                           ] if idx == 0 else self.mixing_extruders[0].positions
         self.ratios = [0 for p in range(len(self.extruder_names))]
         self.current_mixing = tuple(self.ratios)
-        self.gradient_enabled = False
-        # assumed to be sorted list of ((start, middle, end), (ref1, ref2))
-        self.gradient_heights = []
-        self.gradient_method = 'linear'
         gcode = self.printer.lookup_object('gcode')
         logging.info("MixingExtruder extruders=%s",
                      ", ".join(self.extruder_names))
@@ -62,9 +62,34 @@ class MixingExtruder:
         gcode.register_mux_command("ACTIVATE_EXTRUDER", "EXTRUDER",
                                    self.name, self.cmd_ACTIVATE_EXTRUDER,
                                    desc=self.cmd_ACTIVATE_EXTRUDER_help)
+        gcode.register_mux_command("SET_MIXING_EXTRUDER", "EXTRUDER",
+                                   self.name, self.cmd_SET_MIXING_EXTRUDER,
+                                   desc=self.cmd_SET_MIXING_EXTRUDER_help)
+        gcode.register_mux_command("SAVE_MIXING_EXTRUDERS", "EXTRUDER",
+                                   self.name, self.cmd_SAVE_MIXING_EXTRUDERS,
+                                   desc=self.cmd_SAVE_MIXING_EXTRUDERS_help)
+        gcode.register_mux_command("ADD_MIXING_GRADIENT", "EXTRUDER",
+                                   self.name, self.cmd_ADD_MIXING_GRADIENT,
+                                   desc=self.cmd_ADD_MIXING_GRADIENT_help)
+        gcode.register_mux_command("RESET_MIXING_GRADIENT", "EXTRUDER",
+                                   self.name, self.cmd_RESET_MIXING_GRADIENT,
+                                   desc=self.cmd_RESET_MIXING_GRADIENT_help)
+        gcode.register_mux_command("SET_MIXING_GRADIENT", "EXTRUDER",
+                                   self.name, self.cmd_SET_MIXING_GRADIENT,
+                                   desc=self.cmd_SET_MIXING_GRADIENT_help)
         gcode.register_mux_command("MIXING_STATUS", "EXTRUDER",
                                    self.name, self.cmd_MIXING_STATUS,
                                    desc=self.cmd_MIXING_STATUS_help)
+
+    def _init_mixings(self, idx, extruders):
+        if idx == 0:
+            return [1./extruders for p in range(extruders)]
+        elif idx <= extruders:
+            return [1. if p == idx-1 else 0. for p in range(extruders)]
+        elif idx <= 2*extruders:
+            return [0. if p == idx-1 else 1./(extruders-1)
+                    for p in range(extruders)]
+        return [1./extruders for p in range(extruders)]
 
     def _activate(self):
         if self.activated:
@@ -215,18 +240,17 @@ class MixingExtruder:
                                       for extruder in self.extruders),
                       extruders=",".join(extruder.name
                                          for extruder in self.extruders))
-        if self.gradient_references[0] != self.gradient_references[1]:
-            status.update(
-                gradient=",".join(
-                    "%s=%s" % (k, v)
-                    for k, v in dict(
-                        heights="%.2f-%.2f" % self.gradient_heights,
-                        mixings="%s-%s" % tuple(
-                            ":".join("%.2f" % (x)
-                                     for x in self.mixing_extruders[i].mixing)
-                            for i in self.gradient_references),
-                        method=self.gradient_method,
-                        enabled=str(self.gradient_enabled)).items()))
+        for gradient in self.gradients:
+            status.update(gradient=",".join(
+                "%s=%s" % (k, v)
+                for k, v in dict(
+                    heights="%.2f-(%.2f)-%.2f" % gradient[0],
+                    mixings="%s-%s" % tuple(
+                        ":".join("%.2f" % (x)
+                                 for x in self.mixing_extruders[i].mixing)
+                        for i in gradient[1]),
+                    method=self.gradient_method,
+                    enabled=str(self.gradient_enabled)).items()))
         return status
 
     def _reset_positions(self):
@@ -246,10 +270,10 @@ class MixingExtruder:
 
     def stats(self, eventtime):
         if self.name == 'mixingextruder':
-            return False, "mixingextruder: positions=%s mixing=%s" % (
+            return False, self.name + ": positions=%s mixing=%s" % (
                 ",".join("%0.2f" % (m) for m in self.positions),
                 ",".join("%0.2f" % (m) for m in self.current_mixing))
-        return False, "mixingextruder: mixing=%s" % (
+        return False, self.name + ": mixing=%s" % (
             ",".join("%0.2f" % (m) for m in self.current_mixing))
 
     def cmd_M163(self, gcmd):
@@ -381,6 +405,79 @@ class MixingExtruder:
             gcode, "G1", gcmd.get_commandline(),
             dict(gcmd.get_command_parameters(), E="%f" % (extrude)),
             gcmd._need_ack))
+
+    cmd_SET_MIXING_EXTRUDER_help = "Set scale on motor/extruder"
+
+    def cmd_SET_MIXING_EXTRUDER(self, gcmd):
+        self._activate()
+        extruder = gcmd.get('MIXING_MOTOR')
+        scale = gcmd.get_float('SCALE', minval=0., maxval=1.)
+        if extruder not in self.extruder_names:
+            raise gcmd.error("Invalid extruder/motor")
+        index = self.extruder_names.index(extruder)
+        self.ratios[index] = scale
+
+    cmd_SAVE_MIXING_EXTRUDERS_help = "Save the scales on motors"
+
+    def cmd_SAVE_MIXING_EXTRUDERS(self, gcmd):
+        self._activate()
+        mixingextruder = self
+        s = sum(self.ratios)
+        if s <= 0:
+            raise gcmd.error("Could not save ratio: its empty")
+        for i, v in enumerate(self.ratios):
+            mixingextruder.mixing[i] = v/s
+            self.ratios[i] = 0.0
+
+    cmd_SET_MIXING_GRADIENT_help = "Turn no/off grdient mixing"
+
+    def cmd_SET_MIXING_GRADIENT(self, gcmd):
+        enable = gcmd.get_int('ENABLE', 1, minval=0, maxval=1)
+        self.gradient_enabled = enable == 1
+
+    cmd_ADD_MIXING_GRADIENT_help = "Add mixing gradient"
+
+    def _to_idx(self, name):
+        if name.startswith('mixingextruder'):
+            if name[14:] == '':
+                return 0
+            try:
+                return int(name[14:])
+            except Exception:
+                pass
+        try:
+            return int(name)
+        except Exception:
+            return -1
+
+    def cmd_ADD_MIXING_GRADIENT(self, gcmd):
+        start_extruder = self._to_idx(gcmd.get('START'))
+        end_extruder = self._to_idx(gcmd.get('END'))
+        if start_extruder not in self.mixing_extruders.keys() or \
+                end_extruder not in self.mixing_extruders.keys():
+            raise gcmd.error("Invalid start/end value")
+        start_height = gcmd.get_float('START_HEIGHT', minval=0.)
+        end_height = gcmd.get_float('END_HEIGHT', minval=0.)
+        if start_height > end_height:
+            start_height, end_height = end_height, start_height
+            start_extruder, end_extruder = end_extruder, start_extruder
+        for gradient in self.gradients:
+            s, _, e = gradient[0]
+            if s < start_height < e or s < end_height < e:
+                raise gcmd.error(
+                    "Could not configure gradient: overlapping starts/ends")
+        self.gradients.append((
+            (start_height,
+             (start_height + end_height) / 2,
+             end_height),
+            (start_extruder, end_extruder)))
+        self.gradients.sort(key=lambda x: x[0][0])
+
+    cmd_RESET_MIXING_GRADIENT_help = "Clear mixing gradient info"
+
+    def cmd_RESET_MIXING_GRADIENT(self, gcmd):
+        self.gradient_enabled, self.gradients, self.gradient_method = \
+            False, [], 'linear'
 
     cmd_ACTIVATE_EXTRUDER_help = "Change the active extruder"
 
