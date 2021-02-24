@@ -53,7 +53,7 @@ class MixingExtruder:
         self.current_mixing = tuple(self.ratios)
         self.gradient_enabled = False
         # assumed to be sorted list of ((start, middle, end), (ref1, ref2))
-        self.gradient_heights = []
+        self.gradients = []
         self.gradient_method = 'linear'
         logging.info("MixingExtruder extruders=%s",
                      ", ".join(self.extruder_names))
