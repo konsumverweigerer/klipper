@@ -25,10 +25,6 @@ class MixingMove:
             time_accel, time_cruise, time_decel
         self.start_pos = (x, y, z, e)
         self.end_pos = tuple(sum(s) for s in zip(self.start_pos, self.axes_d))
-        self.gradient_enabled = False
-        # assumed to be sorted list of ((start, middle, end), (ref1, ref2))
-        self.gradient_heights = []
-        self.gradient_method = 'linear'
 
 
 class MixingExtruder:
@@ -55,10 +51,14 @@ class MixingExtruder:
                           ] if idx == 0 else self.mixing_extruders[0].positions
         self.ratios = [0 for p in range(len(self.extruder_names))]
         self.current_mixing = tuple(self.ratios)
-        gcode = self.printer.lookup_object('gcode')
+        self.gradient_enabled = False
+        # assumed to be sorted list of ((start, middle, end), (ref1, ref2))
+        self.gradient_heights = []
+        self.gradient_method = 'linear'
         logging.info("MixingExtruder extruders=%s",
                      ", ".join(self.extruder_names))
         # Register commands
+        gcode = self.printer.lookup_object('gcode')
         gcode.register_mux_command("ACTIVATE_EXTRUDER", "EXTRUDER",
                                    self.name, self.cmd_ACTIVATE_EXTRUDER,
                                    desc=self.cmd_ACTIVATE_EXTRUDER_help)
