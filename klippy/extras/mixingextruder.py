@@ -84,11 +84,27 @@ class MixingExtruder:
     def _init_mixings(self, idx, extruders):
         if idx == 0:
             return [1./extruders for p in range(extruders)]
-        elif idx <= extruders:
-            return [1. if p == idx-1 else 0. for p in range(extruders)]
-        elif idx <= 2*extruders:
-            return [0. if p == idx-1 else 1./(extruders-1)
+        idx = idx-1
+        if idx < extruders:
+            return [1. if p == idx else 0. for p in range(extruders)]
+        idx = idx-extruders
+        if idx < extruders:
+            return [0. if p == idx else 1./(extruders-1)
                     for p in range(extruders)]
+        idx = idx-extruders
+        if extruders == 3:
+            if idx < 2*extruders:
+                return [[0. if p == x else (1+((x+y) % 2))/3.
+                         for p in range(extruders)]
+                        for x in range(extruders) for y in (1, 2)][idx]
+            idx = idx-2*extruders
+        elif extruders > 3:
+            if idx < (extruders*(extruders-1)/2):
+                return [[0. if p == x or p == y else 1./(extruders-2)
+                         for p in range(extruders)]
+                        for x in range(extruders)
+                        for y in range(x+1, extruders)][idx]
+            idx = idx-(extruders*(extruders-1)/2)
         return [1./extruders for p in range(extruders)]
 
     def _activate(self):
@@ -181,23 +197,28 @@ class MixingExtruder:
                 % (area, self.main_extruder.max_extrude_ratio
                    * self.main_extruder.filament_area))
 
-    def _get_gradient(self, pos):
+    def _get_gradient(self, start_pos, end_pos):
         default = self.mixing
         for heights, refs in self.gradients:
             start, _, end = heights
             start_mix, end_mix = (self.mixing_extruders[i].mixing
                                   for i in refs)
             if self.gradient_method == 'linear':
-                zpos = pos[2]
+                zpos = start_pos[2]
                 if zpos <= start:
                     return start_mix
                 if zpos >= end:
                     default = end_mix
                     continue
                 w = (zpos - start) / (end - start)
+                logging.info("linear gradient @%.1f(%.1f-%.1f) [%s-%s]" %
+                             (zpos, start, end,
+                              "/".join("%.1f" % x for x in start_mix),
+                              "/".join("%.1f" % x for x in end_mix)))
                 return list(((1. - w) * s + w * e)
                             for s, e in zip(start_mix, end_mix))
             if self.gradient_method == 'spherical':
+                pos = [(x+y)/2. for x, y in zip(start_pos, end_pos)]
                 dist = math.sqrt(sum(x**2 for x in pos))
                 if dist <= start:
                     return start_mix
@@ -205,13 +226,17 @@ class MixingExtruder:
                     default = end_mix
                     continue
                 w = (dist - start) / (end - start)
+                logging.info("spherical gradient @%.1f(%.1f-%.1f) [%s-%s]" %
+                             (zpos, start, end,
+                              "/".join("%.1f" % x for x in start_mix),
+                              "/".join("%.1f" % x for x in end_mix)))
                 return list(((1. - w) * s + w * e)
                             for s, e in zip(start_mix, end_mix))
         return default
 
     def check_move(self, move):
-        mixing = self.mixing if self.gradient_enabled \
-            else self._get_gradient(move.start_pos[:3])
+        mixing = self.mixing if not self.gradient_enabled \
+            else self._get_gradient(move.start_pos[:3], move.end_pos[:3])
         for idx, extruder in enumerate(self.extruders):
             scaled_move = self._scale_move(move, idx, mixing)
             if scaled_move:
@@ -240,17 +265,17 @@ class MixingExtruder:
                                       for extruder in self.extruders),
                       extruders=",".join(extruder.name
                                          for extruder in self.extruders))
-        for gradient in self.gradients:
-            status.update(gradient=",".join(
-                "%s=%s" % (k, v)
+        for i, gradient in enumerate(self.gradients):
+            status.update({"gradient%d" % (i): ",".join(
+                "%s:%s" % (k, v)
                 for k, v in dict(
-                    heights="%.2f-(%.2f)-%.2f" % gradient[0],
+                    heights="%.1f-(%.1f)-%.1f" % gradient[0],
                     mixings="%s-%s" % tuple(
-                        ":".join("%.2f" % (x)
+                        "/".join("%.1f" % (x)
                                  for x in self.mixing_extruders[i].mixing)
                         for i in gradient[1]),
                     method=self.gradient_method,
-                    enabled=str(self.gradient_enabled)).items()))
+                    enabled=str(self.gradient_enabled)).items())})
         return status
 
     def _reset_positions(self):
