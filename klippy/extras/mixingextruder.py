@@ -35,10 +35,12 @@ class MixingExtruder:
             config.get_name(), idx)
         self.extruder_names = [e.strip()
                                for e in
-                               config.get('extruders', None).split(",")]
+                               config.get('extruders', '').split(",")
+                               if len(e)]
         if not len(self.extruder_names):
             raise self._mcu.get_printer().config_error(
                 "No extruders configured for mixing")
+        self.extended_g1 = config.get('extended_g1', 'false').lower() == 'true'
         self.main_extruder = None
         self.extruders = []
         self.heater = None
@@ -130,8 +132,9 @@ class MixingExtruder:
         gcode.register_command("M165", self.cmd_M165)
         gcode.register_command("M166", self.cmd_M166)
         gcode.register_command("M567", self.cmd_M567)
-        self.orig_G1 = gcode.register_command("G1", None)
-        gcode.register_command("G1", self.cmd_G1)
+        if self.extended_g1:
+            self.orig_G1 = gcode.register_command("G1", None)
+            gcode.register_command("G1", self.cmd_G1)
 
     def update_move_time(self, flush_time):
         for extruder in self.extruders:
@@ -438,7 +441,12 @@ class MixingExtruder:
         extruder = gcmd.get('MIXING_MOTOR')
         scale = gcmd.get_float('SCALE', minval=0., maxval=1.)
         if extruder not in self.extruder_names:
-            raise gcmd.error("Invalid extruder/motor")
+            try:
+                index = int(extruder)
+                if not 0 <= index < len(self.extruser_names):
+                    raise Exception("Invalid index")
+            except Exception as e:
+                raise gcmd.error("Invalid extruder/motor: %s" % (e.message))
         index = self.extruder_names.index(extruder)
         self.ratios[index] = scale
 
@@ -447,6 +455,11 @@ class MixingExtruder:
     def cmd_SAVE_MIXING_EXTRUDERS(self, gcmd):
         self._activate()
         mixingextruder = self
+        extruder = gcmd.get('MIXING_EXTRUDER', None)
+        if extruder:
+            idx = self._to_idx(extruder)
+            if idx >= 0:
+                mixingextruder = self.mixing_extruders[idx]
         s = sum(self.ratios)
         if s <= 0:
             raise gcmd.error("Could not save ratio: its empty")
@@ -463,6 +476,10 @@ class MixingExtruder:
     cmd_ADD_MIXING_GRADIENT_help = "Add mixing gradient"
 
     def _to_idx(self, name):
+        name = name.lower()
+        if name == "active":
+            toolhead = self.printer.lookup_object('toolhead')
+            name = toolhead.get_extruder().get_name().lower()
         if name.startswith('mixingextruder'):
             if name[14:] == '':
                 return 0
