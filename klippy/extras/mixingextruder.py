@@ -127,14 +127,10 @@ class MixingExtruder:
                           (", ".join(self.extruder_names)), e)
         gcode = self.printer.lookup_object('gcode')
         # Register commands
-        gcode.register_command("M163", self.cmd_M163)
-        gcode.register_command("M164", self.cmd_M164)
-        gcode.register_command("M165", self.cmd_M165)
-        gcode.register_command("M166", self.cmd_M166)
-        gcode.register_command("M567", self.cmd_M567)
         if self.extended_g1:
-            self.orig_G1 = gcode.register_command("G1", None)
-            gcode.register_command("G1", self.cmd_G1)
+            o = gcode.register_command("G1", None)
+            gcode.register_command("G1",
+                                   lambda g: self.cmd_G("G1", o, g))
 
     def update_move_time(self, flush_time):
         for extruder in self.extruders:
@@ -304,133 +300,25 @@ class MixingExtruder:
         return False, self.name + ": mixing=%s" % (
             ",".join("%0.2f" % (m) for m in self.current_mixing))
 
-    def cmd_M163(self, gcmd):
-        index = gcmd.get_int('S', None, minval=0, maxval=len(self.extruders))
-        weight = gcmd.get_float('P', 0., minval=0.)
-        self.ratios[index] = weight
-
-    def cmd_M164(self, gcmd):
-        mixingextruder = self
-        index = gcmd.get_int('S', 0, minval=0, maxval=16)
-        if index:
-            mixingextruder = self.printer.lookup_object(
-                "mixingextruder%d" % (index))
-            if not mixingextruder:
-                raise gcmd.error("Invalid extruder index")
-        s = sum(self.ratios)
-        if s <= 0:
-            raise gcmd.error("Could not save ratio: its empty")
-        for i, v in enumerate(self.ratios):
-            mixingextruder.mixing[i] = v/s
-            self.ratios[i] = 0.0
-
-    def cmd_M165(self, gcmd):
-        mixingextruder = self
-        toolhead = self.printer.lookup_object('toolhead')
-        activeextruder = toolhead.get_extruder()
-        if activeextruder is not self:
-            if activeextruder not in mixingextruder.mixing_extruders.values():
-                raise gcmd.error("Active extruder is not mixing")
-            mixingextruder = activeextruder
-        a = gcmd.get_float('A', 0., minval=0, maxval=1)
-        b = gcmd.get_float('B', 0., minval=0, maxval=1)
-        c = gcmd.get_float('C', 0., minval=0, maxval=1)
-        d = gcmd.get_float('D', 0., minval=0, maxval=1)
-        h = gcmd.get_float('H', 0., minval=0, maxval=1)
-        i = gcmd.get_float('I', 0., minval=0, maxval=1)
-        weights = [float(w)
-                   for i, w in enumerate((a, b, c, d, h, i))
-                   if i < len(self.extruders)]
-        s = sum(weights)
-        if s > 1.01 or s < 0.99:
-            raise gcmd.error("Could not save ratio: out of bounds %0.2f" % (s))
-        for i, v in enumerate(weights):
-            mixingextruder.mixing[i] = v/s
-
-    def cmd_M166(self, gcmd):
-        mixingextruder = self
-        toolhead = self.printer.lookup_object('toolhead')
-        enable = gcmd.get_int('S', -1, minval=0, maxval=1)
-        start_height = gcmd.get_int('A', -1., minval=0)
-        end_height = gcmd.get_float('Z', -1., minval=0)
-        start_extruder = gcmd.get_int('I', -1, minval=0, maxval=16)
-        end_extruder = gcmd.get_int('J', -1, minval=0, maxval=16)
-        index = gcmd.get_int('T', -1, minval=0, maxval=16)
-        activeextruder = toolhead.get_extruder()
-        if index >= 0:
-            mixingextruder = mixingextruder.mixing_extruders[index]
-        elif activeextruder is not self and \
-                activeextruder in mixingextruder.mixing_extruders.values():
-            mixingextruder = activeextruder
-        if start_height < 0 and end_height < 0 and \
-                start_extruder < 0 and end_extruder < 0:
-            if enable < 0:
-                if gcmd.get('T').strip() == '':
-                    # reset gradient
-                    self.gradient_enabled, self.gradients, \
-                        self.gradient_method = False, [], 'linear'
-                    return
-                raise gcmd.error("Could not configure gradient")
-            mixingextruder.gradient_enabled = enable == 1
-            return
-        if start_height < 0 or end_height < 0 or \
-                start_extruder < 0 or end_extruder < 0:
-            raise gcmd.error(
-                "Could not configure gradient: start or end undefined")
-        if start_height > end_height:
-            start_height, end_height = end_height, start_height
-            start_extruder, end_extruder = end_extruder, start_extruder
-        for gradient in self.gradients:
-            s, _, e = gradient[0]
-            if s < start_height < e or s < end_height < e:
-                raise gcmd.error(
-                    "Could not configure gradient: overlapping starts/ends")
-        self.gradients.append((
-            (start_height,
-             (start_height + end_height) / 2,
-             end_height),
-            (start_extruder, end_extruder)))
-        self.gradients.sort(key=lambda x: x[0][0])
-        mixingextruder.gradient_enabled = enable == 1
-
-    def cmd_M567(self, gcmd):
-        mixingextruder = self
-        index = gcmd.get_int('P', 0, minval=0, maxval=16)
-        if index:
-            mixingextruder = self.printer.lookup_object(
-                "mixingextruder%d" % (index))
-            if not mixingextruder:
-                raise gcmd.error("Invalid extruder index")
-        weighting = gcmd.get('E', None)
-        if not weighting:
-            raise gcmd.error("No weighting in M567")
-        weights = [float(w)
-                   for i, w in enumerate(weighting.split(":"))
-                   if i < len(self.extruders)]
-        if min(weights) < 0:
-            raise gcmd.error("Negative weight not allowed")
-        s = sum(weights)
-        if s > 1.01 or s < 0.99:
-            raise gcmd.error("Could not save ratio: out of bounds %0.2f" % (s))
-        for i, v in enumerate(weights):
-            mixingextruder.mixing[i] = v/s
-
-    def cmd_G1(self, gcmd):
-        gcode = self.printer.lookup_object('gcode')
+    def cmd_G(self, name, orig, gcmd):
         weighting = gcmd.get('E', None)
         if not weighting or ":" not in weighting:
-            self.orig_G1(gcmd)
-            return
+            return orig(gcmd)
+        toolhead = self.printer.lookup_object('toolhead')
+        extruder = toolhead.get_extruder()
+        if not extruder.get_name().startswith("mixingextruder"):
+            raise gcmd.error("No mixing extruder active")
+        gcode = self.printer.lookup_object('gcode')
         weights = [float(w)
                    for i, w in enumerate(weighting.split(":"))
                    if i < len(self.extruders)]
         extrude = sum(weights)
-        weighting = ":".join("%0.2f" % (w / extrude) for w in weights)
-        self.cmd_M567(GCodeCommand(
-            gcode, "M567", "M567 E%s" % (weighting),
-            dict(E=weighting), gcmd._need_ack))
-        self.orig_G1(GCodeCommand(
-            gcode, "G1", gcmd.get_commandline(),
+        if min(weights) < 0:
+            raise gcmd.error("Invalid extrude: %s" % (weighting))
+        for i, w in enumerate(weights):
+            extruder.mixing[i] = w/extrude
+        orig(GCodeCommand(
+            gcode, name, gcmd.get_commandline(),
             dict(gcmd.get_command_parameters(), E="%f" % (extrude)),
             gcmd._need_ack))
 
@@ -470,10 +358,17 @@ class MixingExtruder:
     cmd_SET_MIXING_GRADIENT_help = "Turn no/off grdient mixing"
 
     def cmd_SET_MIXING_GRADIENT(self, gcmd):
-        enable = gcmd.get_int('ENABLE', 1, minval=0, maxval=1)
-        self.gradient_enabled = enable == 1
+        try:
+            enable = gcmd.get_int('ENABLE', 1, minval=0, maxval=1)
+            self.gradient_enabled = enable == 1
+        except Exception:
+            enable = gcmd.get('ENABLE', '')
+            self.gradient_enabled = enable.lower() == 'true'
 
     cmd_ADD_MIXING_GRADIENT_help = "Add mixing gradient"
+
+    def find_mixing_extruder(self, name):
+        return self._to_idx(name)
 
     def _to_idx(self, name):
         name = name.lower()
