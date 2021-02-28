@@ -243,7 +243,7 @@ class MixingExtruder:
 
     def move(self, print_time, move):
         mixing = self.mixing if self.gradient_enabled \
-            else self._get_gradient(move.start_pos[:3])
+            else self._get_gradient(move.start_pos[:3], move.end_pos[:3])
         self.current_mixing = tuple(mixing)
         for idx, extruder in enumerate(self.extruders):
             scaled_move = self._scale_move(move, idx, mixing)
@@ -257,8 +257,8 @@ class MixingExtruder:
                                       for m in self.mixing),
                       current=",".join("%0.1f%%" % (m * 100.)
                                        for m in self.current_mixing),
-                      positions=",".join("%0.2fmm" % (m)
-                                         for m in self.positions),
+                      positions=",".join("%0.2fmm" % (p)
+                                         for p in self.positions),
                       ticks=",".join("%0.2f" % (
                         extruder.stepper.get_mcu_position())
                                       for extruder in self.extruders),
