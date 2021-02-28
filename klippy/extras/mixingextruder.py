@@ -271,6 +271,7 @@ class MixingExtruder:
                         for i in gradient[1]),
                     method=self.gradient_method,
                     enabled=str(self.gradient_enabled)).items())})
+        status['find_mixing_extruder'] = self._to_idx
         return status
 
     def _reset_positions(self):
@@ -363,9 +364,6 @@ class MixingExtruder:
             self.gradient_enabled = enable.lower() == 'true'
 
     cmd_ADD_MIXING_GRADIENT_help = "Add mixing gradient"
-
-    def find_mixing_extruder(self, name):
-        return self._to_idx(name)
 
     def _to_idx(self, name):
         name = name.lower()

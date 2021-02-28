@@ -22,6 +22,7 @@ class GetStatusWrapper:
         if sval in self.cache:
             return self.cache[sval]
         po = self.printer.lookup_object(sval, None)
+        logging.info("looking up %s -> %s", sval, str(po))
         if po is None or not hasattr(po, 'get_status'):
             raise KeyError(val)
         if self.eventtime is None:
