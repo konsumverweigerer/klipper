@@ -25,7 +25,7 @@ class GetStatusWrapper:
                      ",".join(s[0]+"->"+str(s[1])
                               for s in self.printer.lookup_objects()
                               if not s[1]))
-        po = self.printer.lookup_object(sval)
+        po = self.printer.lookup_object(sval, None)
         logging.info("looking up %s -> %s[%s] from %s",
                      sval, str(po), str(sval in self.printer.objects),
                      ",".join(self.printer.objects.keys()))
