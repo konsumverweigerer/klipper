@@ -442,4 +442,5 @@ def load_config(config):
         if i:
             section = 'mixingextruder%d' % (i,)
         pe = MixingExtruder(config.getsection('mixingextruder'), i)
-        printer.add_object(section, pe)
+        if i == 0:
+            printer.add_object(section, pe)
