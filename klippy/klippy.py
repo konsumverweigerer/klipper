@@ -88,7 +88,6 @@ class Printer:
             raise self.config_error(
                 "Printer object '%s' already created" % (name,))
         self.objects[name] = obj
-        logging.info("printer objects %s" % (str(self.objects)))
     def lookup_object(self, name, default=configfile.sentinel):
         if name in self.objects:
             return self.objects[name]

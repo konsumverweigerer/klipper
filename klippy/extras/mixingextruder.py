@@ -443,7 +443,8 @@ def load_config(config):
             section = 'mixingextruder%d' % (i,)
         pe = MixingExtruder(config.getsection('mixingextruder'), i)
         if i == 0:
-            printer.add_object(section, pe)
+            mixingextruder = pe
             logging.info("Started mixingextruder %s,%s",
                          str(pe),
                          str(printer.lookup_object(section)))
+    return mixingextruder
