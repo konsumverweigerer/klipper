@@ -41,9 +41,8 @@ class MixingExtruder:
             raise self._mcu.get_printer().config_error(
                 "No extruders configured for mixing")
         self.extended_g1 = config.get('extended_g1', 'false').lower() == 'true'
-        self.main_extruder = None
-        self.extruders = []
-        self.heater = None
+        self.extruders = [] if idx == 0 else self.printer.lookup_object(
+            "mixingextruder").extruders
         self.mixing_extruders = {} if idx == 0 else self.printer.lookup_object(
             "mixingextruder").mixing_extruders
         self.mixing_extruders[idx] = self
@@ -118,11 +117,8 @@ class MixingExtruder:
         try:
             self.extruders = [self.printer.lookup_object(extruder)
                               for extruder in self.extruder_names]
-            self.main_extruder = self.extruders[0]
-            self.heater = self.main_extruder.get_heater()
         except Exception as e:
             self.extruders = []
-            self.heater = None
             logging.error("no extruders found: %s" %
                           (", ".join(self.extruder_names)), e)
         gcode = self.printer.lookup_object('gcode')
@@ -140,7 +136,7 @@ class MixingExtruder:
         diff_r = move.axes_r[3] - prev_move.axes_r[3]
         if diff_r:
             m = max(self.mixing)
-            return (self.main_extruder.instant_corner_v / abs(m * diff_r))**2
+            return (self.extruders[0].instant_corner_v / abs(m * diff_r))**2
         return move.max_cruise_v2
 
     def _scale_move(self, move, idx, weights):
@@ -166,35 +162,35 @@ class MixingExtruder:
     def _check_move(self, scaled_move, move):
         axis_r = scaled_move.axes_r[3]
         axis_d = scaled_move.axes_d[3]
-        if not self.heater.can_extrude:
+        if not self.get_heater().can_extrude:
             raise self.printer.command_error(
                 "Extrude below minimum temp\n"
                 "See the 'min_extrude_temp' config option for details")
         if (not move.axes_d[0] and not move.axes_d[1]) or axis_r < 0.:
             # Extrude only move (or retraction move) - limit accel and velocity
-            if abs(axis_d) > self.main_extruder.max_e_dist:
+            if abs(axis_d) > self.extruders[0].max_e_dist:
                 raise self.printer.command_error(
                     "Extrude only move too long (%.3fmm vs %.3fmm)\n"
                     "See the 'max_extrude_only_distance' config"
                     " option for details" % (axis_d,
-                                             self.main_extruder.max_e_dist))
+                                             self.extruders[0].max_e_dist))
             inv_extrude_r = 1. / abs(axis_r)
-            move.limit_speed(self.main_extruder.max_e_velocity * inv_extrude_r,
-                             self.main_extruder.max_e_accel * inv_extrude_r)
-        elif axis_r > self.main_extruder.max_extrude_ratio:
-            if axis_d <= self.main_extruder.nozzle_diameter * \
-                    self.main_extruder.max_extrude_ratio:
+            move.limit_speed(self.extruders[0].max_e_velocity * inv_extrude_r,
+                             self.extruders[0].max_e_accel * inv_extrude_r)
+        elif axis_r > self.extruders[0].max_extrude_ratio:
+            if axis_d <= self.extruders[0].nozzle_diameter * \
+                    self.extruders[0].max_extrude_ratio:
                 # Permit extrusion if amount extruded is tiny
                 return
-            area = axis_r * self.main_extruder.filament_area
+            area = axis_r * self.extruders[0].filament_area
             logging.debug("Overextrude: %s vs %s (area=%.3f dist=%.3f)",
-                          axis_r, self.main_extruder.max_extrude_ratio, area,
+                          axis_r, self.extruders[0].max_extrude_ratio, area,
                           move.move_d)
             raise self.printer.command_error(
                 "Move exceeds maximum extrusion (%.3fmm^2 vs %.3fmm^2)\n"
                 "See the 'max_extrude_cross_section' config option for details"
-                % (area, self.main_extruder.max_extrude_ratio
-                   * self.main_extruder.filament_area))
+                % (area, self.extruders[0].max_extrude_ratio
+                   * self.extruders[0].filament_area))
 
     def _get_gradient(self, start_pos, end_pos):
         default = self.mixing
@@ -290,7 +286,7 @@ class MixingExtruder:
         return self.name
 
     def get_heater(self):
-        return self.heater
+        return self.extruders[0].get_heater()
 
     def stats(self, eventtime):
         if self.name == 'mixingextruder':
