@@ -327,7 +327,7 @@ class MixingExtruder:
     def cmd_SET_MIXING_EXTRUDER(self, gcmd):
         self._activate()
         extruder = gcmd.get('MIXING_MOTOR')
-        scale = gcmd.get_float('SCALE', minval=0., maxval=1.)
+        scale = gcmd.get_float('SCALE', minval=0.)
         if extruder not in self.extruder_names:
             try:
                 index = int(extruder)
@@ -335,7 +335,8 @@ class MixingExtruder:
                     raise Exception("Invalid index")
             except Exception as e:
                 raise gcmd.error("Invalid extruder/motor: %s" % (e.message))
-        index = self.extruder_names.index(extruder)
+        else:
+            index = self.extruder_names.index(extruder)
         self.ratios[index] = scale
 
     cmd_SAVE_MIXING_EXTRUDERS_help = "Save the scales on motors"
