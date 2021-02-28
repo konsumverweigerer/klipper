@@ -54,8 +54,9 @@ class MixingExtruder:
         # assumed to be sorted list of ((start, middle, end), (ref1, ref2))
         self.gradients = []
         self.gradient_method = 'linear'
-        logging.info("MixingExtruder extruders=%s",
-                     ", ".join(self.extruder_names))
+        logging.info("MixingExtruder %d extruders=%s", idx,
+                     ",".join(self.extruder_names),
+                     ",".join("%.1f" % (x) for x in self.mixing))
         # Register commands
         gcode = self.printer.lookup_object('gcode')
         gcode.register_mux_command("ACTIVATE_EXTRUDER", "EXTRUDER",
@@ -269,8 +270,12 @@ class MixingExtruder:
                         for i in gradient[1]),
                     method=self.gradient_method,
                     enabled=str(self.gradient_enabled)).items())})
-        status['find_mixing_extruder'] = self._to_idx
+        status['find_mixing_extruder'] = self.find_mixing_extruder
         return status
+
+    def find_mixing_extruder(self, name):
+        idx = self._to_idx(name)
+        return "" if idx < 0 else self.mixing_extruders[idx].get_name()
 
     def _reset_positions(self):
         pos = [extruder.stepper.get_commanded_position()
