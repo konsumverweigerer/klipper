@@ -22,8 +22,9 @@ class GetStatusWrapper:
         if sval in self.cache:
             return self.cache[sval]
         logging.info("looking up in %s",
-                     ",".join(s[0]+"->"+str(s[1])+"/"+str(self.printer.lookup_object(s[0]))
-                              for s in self.printer.lookup_objects()))
+                     ",".join(s[0]+"->"+str(s[1])
+                              for s in self.printer.lookup_objects()
+                              if not s[1]))
         po = self.printer.lookup_object(sval)
         logging.info("looking up %s -> %s[%s] from %s",
                      sval, str(po), str(sval in self.printer.objects),

@@ -84,13 +84,12 @@ class Printer:
             and self.start_args.get('debuginput') is not None):
             self.request_exit('error_exit')
     def add_object(self, name, obj):
-        if obj in self.objects:
+        if name in self.objects:
             raise self.config_error(
                 "Printer object '%s' already created" % (name,))
         self.objects[name] = obj
+        logging.info("printer objects %s" % (str(self.objects)))
     def lookup_object(self, name, default=configfile.sentinel):
-        logging.info("printer looking up %s in %s %s",
-                     name, ",".join(s for s in self.objects))
         if name in self.objects:
             return self.objects[name]
         if default is configfile.sentinel:
