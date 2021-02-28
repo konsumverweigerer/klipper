@@ -434,12 +434,8 @@ class MixingExtruder:
 
 
 def load_config(config):
-    printer = config.get_printer()
     mixingextruder = None
     for i in range(16):
-        section = 'mixingextruder'
-        if i:
-            section = 'mixingextruder%d' % (i,)
         pe = MixingExtruder(config.getsection('mixingextruder'),
                             i, parent=mixingextruder)
         if i == 0:
