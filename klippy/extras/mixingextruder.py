@@ -331,7 +331,7 @@ class MixingExtruder:
         if extruder not in self.extruder_names:
             try:
                 index = int(extruder)
-                if not 0 <= index < len(self.extruser_names):
+                if not 0 <= index < len(self.extruder_names):
                     raise Exception("Invalid index")
             except Exception as e:
                 raise gcmd.error("Invalid extruder/motor: %s" % (e.message))
