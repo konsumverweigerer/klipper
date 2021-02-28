@@ -41,8 +41,8 @@ class MixingExtruder:
             raise self._mcu.get_printer().config_error(
                 "No extruders configured for mixing")
         self.extended_g1 = config.get('extended_g1', 'false').lower() == 'true'
-        self.extruders = [] if parent else parent.extruders
-        self.mixing_extruders = {} if parent else parent.mixing_extruders
+        self.extruders = parent.extruders if parent else []
+        self.mixing_extruders = parent.mixing_extruders if parent else {}
         self.mixing_extruders[idx] = self
         self.mixing = self._init_mixings(idx, len(self.extruder_names))
         self.commanded_pos = 0
