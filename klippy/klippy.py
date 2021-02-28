@@ -89,6 +89,9 @@ class Printer:
                 "Printer object '%s' already created" % (name,))
         self.objects[name] = obj
     def lookup_object(self, name, default=configfile.sentinel):
+        logging.info("printer looking up %s in %s %s",
+                     name, ",".join(s for s in self.objects),
+                     ",".join(s for s in self.lookup_objects()))
         if name in self.objects:
             return self.objects[name]
         if default is configfile.sentinel:
