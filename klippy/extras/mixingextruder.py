@@ -28,7 +28,7 @@ class MixingMove:
 
 
 class MixingExtruder:
-    def __init__(self, config, idx):
+    def __init__(self, config, idx, parent=None):
         self.printer = config.get_printer()
         self.activated = False
         self.name = config.get_name() if idx == 0 else "%s%d" % (
@@ -41,10 +41,8 @@ class MixingExtruder:
             raise self._mcu.get_printer().config_error(
                 "No extruders configured for mixing")
         self.extended_g1 = config.get('extended_g1', 'false').lower() == 'true'
-        self.extruders = [] if idx == 0 else self.printer.lookup_object(
-            "mixingextruder").extruders
-        self.mixing_extruders = {} if idx == 0 else self.printer.lookup_object(
-            "mixingextruder").mixing_extruders
+        self.extruders = [] if parent else parent.extruders
+        self.mixing_extruders = {} if parent else parent.mixing_extruders
         self.mixing_extruders[idx] = self
         self.mixing = self._init_mixings(idx, len(self.extruder_names))
         self.commanded_pos = 0
@@ -437,14 +435,14 @@ class MixingExtruder:
 
 def load_config(config):
     printer = config.get_printer()
+    mixingextruder = None
     for i in range(16):
         section = 'mixingextruder'
         if i:
             section = 'mixingextruder%d' % (i,)
-        pe = MixingExtruder(config.getsection('mixingextruder'), i)
+        pe = MixingExtruder(config.getsection('mixingextruder'),
+                            i, parent=mixingextruder)
         if i == 0:
             mixingextruder = pe
-            logging.info("Started mixingextruder %s,%s",
-                         str(pe),
-                         str(printer.lookup_object(section)))
+    logging.info("Started mixingextruder")
     return mixingextruder
