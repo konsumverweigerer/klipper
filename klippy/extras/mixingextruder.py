@@ -271,7 +271,7 @@ class MixingExtruder:
                         for i in gradient[1]),
                     method=self.gradient_method,
                     enabled=str(self.gradient_enabled)).items())})
-#        status['find_mixing_extruder'] = self.find_mixing_extruder
+        status['find_mixing_extruder'] = self.find_mixing_extruder
         return status
 
     def find_mixing_extruder(self, name):
