@@ -248,29 +248,29 @@ class MixingExtruder:
         self.commanded_pos = move.end_pos[3]
 
     def get_status(self, eventtime):
-        return {}
-        status = dict(mixing=",".join("%0.1f%%" % (m * 100.)
-                                      for m in self.mixing),
-                      current=",".join("%0.1f%%" % (m * 100.)
-                                       for m in self.current_mixing),
-                      positions=",".join("%0.2fmm" % (p)
-                                         for p in self.positions),
-                      ticks=",".join("%0.2f" % (
-                        extruder.stepper.get_mcu_position())
-                                      for extruder in self.extruders),
-                      extruders=",".join(extruder.name
-                                         for extruder in self.extruders))
-        for i, gradient in enumerate(self.gradients):
-            status.update({"gradient%d" % (i): ",".join(
-                "%s:%s" % (k, v)
-                for k, v in dict(
-                    heights="%.1f-(%.1f)-%.1f" % gradient[0],
-                    mixings="%s-%s" % tuple(
-                        "/".join("%.1f" % (x)
-                                 for x in self.mixing_extruders[i].mixing)
-                        for i in gradient[1]),
-                    method=self.gradient_method,
-                    enabled=str(self.gradient_enabled)).items())})
+        status = {}
+#        status = dict(mixing=",".join("%0.1f%%" % (m * 100.)
+#                                      for m in self.mixing),
+#                      current=",".join("%0.1f%%" % (m * 100.)
+#                                       for m in self.current_mixing),
+#                      positions=",".join("%0.2fmm" % (p)
+#                                         for p in self.positions),
+#                      ticks=",".join("%0.2f" % (
+#                        extruder.stepper.get_mcu_position())
+#                                      for extruder in self.extruders),
+#                      extruders=",".join(extruder.name
+#                                         for extruder in self.extruders))
+#        for i, gradient in enumerate(self.gradients):
+#            status.update({"gradient%d" % (i): ",".join(
+#                "%s:%s" % (k, v)
+#                for k, v in dict(
+#                    heights="%.1f-(%.1f)-%.1f" % gradient[0],
+#                    mixings="%s-%s" % tuple(
+#                        "/".join("%.1f" % (x)
+#                                 for x in self.mixing_extruders[i].mixing)
+#                        for i in gradient[1]),
+#                    method=self.gradient_method,
+#                    enabled=str(self.gradient_enabled)).items())})
         status['find_mixing_extruder'] = self.find_mixing_extruder
         return status
 
