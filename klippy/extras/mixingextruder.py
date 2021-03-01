@@ -31,6 +31,7 @@ def idx_to_extruder(idx):
 
 
 def find_mixing_extruder(self, name, active=''):
+    logging.info("finding mixing extruder: %s %s", name, active)
     idx = extruder_to_idx(name, lambda: active)
     return "" if idx < 0 else idx_to_extruder(idx)
 
@@ -298,7 +299,7 @@ class MixingExtruder:
                     enabled=str(self.gradient_enabled)).items())})
         active = self._active_extruder()
         status['find_mixing_extruder'] = \
-            lambda name: find_mixing_extruder(name, lambda: active)
+            lambda name: find_mixing_extruder(name, active)
         return status
 
     def _reset_positions(self):
