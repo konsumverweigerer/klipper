@@ -37,9 +37,10 @@ class GetStatusWrapper:
             if self.eventtime is None:
                 self.eventtime = self.printer.get_reactor().monotonic()
             logging.info("looking up 3")
-            self.cache[sval] = res = \
-                copy.deepcopy(po.get_status(self.eventtime))
-            logging.info("looking up 4")
+            c = po.get_status(self.eventtime)
+            logging.info("looking up 4: %s", str(c))
+            self.cache[sval] = res = copy.deepcopy(c)
+            logging.info("looking up 5")
             logging.info("lookup success: %s", sval)
             return res
         except Exception as e:
