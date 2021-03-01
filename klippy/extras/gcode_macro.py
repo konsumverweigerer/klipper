@@ -26,9 +26,8 @@ class GetStatusWrapper:
                               for s in self.printer.lookup_objects()
                               if not s[1]))
         po = self.printer.lookup_object(sval, None)
-        logging.info("looking up %s -> %s[%s] from %s",
-                     sval, str(po), str(hasattr(po, 'get_status')),
-                     ",".join(self.printer.objects.keys()))
+        logging.info("looking up %s -> %s[%s]",
+                     sval, str(po), str(hasattr(po, 'get_status')))
         try:
             if po is None or not hasattr(po, 'get_status'):
                 logging.info("attribs %s[%s]: %s", str(po), sval, str(dir(po)))
