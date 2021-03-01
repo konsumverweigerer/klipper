@@ -31,7 +31,6 @@ def idx_to_extruder(idx):
 
 
 def find_mixing_extruder(self, name, active=''):
-    logging.info("finding mixing extruder: %s %s", name, active)
     idx = extruder_to_idx(name, lambda: active)
     return "" if idx < 0 else idx_to_extruder(idx)
 
@@ -398,7 +397,7 @@ class MixingExtruder:
         return toolhead.get_extruder().get_name().lower()
 
     def _to_idx(self, name):
-        return extruder_to_idx(active=self._active_extruder)
+        return extruder_to_idx(name, active=self._active_extruder)
 
     def cmd_ADD_MIXING_GRADIENT(self, gcmd):
         start_extruder = self._to_idx(gcmd.get('START'))

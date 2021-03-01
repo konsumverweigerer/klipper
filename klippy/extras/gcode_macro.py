@@ -21,31 +21,15 @@ class GetStatusWrapper:
         sval = str(val).strip()
         if sval in self.cache:
             return self.cache[sval]
-        logging.info("looking up in %s",
-                     ",".join(s[0]+"->"+str(s[1])
-                              for s in self.printer.lookup_objects()
-                              if not s[1]))
         po = self.printer.lookup_object(sval, None)
-        logging.info("looking up %s -> %s[%s]",
-                     sval, str(po), str(hasattr(po, 'get_status')))
-        try:
-            logging.info("looking up 1")
-            if po is None or not hasattr(po, 'get_status'):
-                logging.info("attribs %s[%s]: %s", str(po), sval, str(dir(po)))
-                raise KeyError(val)
-            logging.info("looking up 2")
-            if self.eventtime is None:
-                self.eventtime = self.printer.get_reactor().monotonic()
-            logging.info("looking up 3")
-            c = po.get_status(self.eventtime)
-            logging.info("looking up 4: %s", str(c))
-            self.cache[sval] = res = copy.deepcopy(c)
-            logging.info("looking up 5")
-            logging.info("lookup success: %s", sval)
-            return res
-        except Exception as e:
-            logging.info("could not get_status %s", e.message, e)
-            raise e
+        if po is None or not hasattr(po, 'get_status'):
+            logging.info("attribs %s[%s]: %s", str(po), sval, str(dir(po)))
+            raise KeyError(val)
+        if self.eventtime is None:
+            self.eventtime = self.printer.get_reactor().monotonic()
+        self.cache[sval] = res = copy.deepcopy(
+            po.get_status(self.eventtime))
+        return res
     def __contains__(self, val):
         try:
             self.__getitem__(val)
