@@ -248,6 +248,7 @@ class MixingExtruder:
         self.commanded_pos = move.end_pos[3]
 
     def get_status(self, eventtime):
+        return {}
         status = dict(mixing=",".join("%0.1f%%" % (m * 100.)
                                       for m in self.mixing),
                       current=",".join("%0.1f%%" % (m * 100.)
