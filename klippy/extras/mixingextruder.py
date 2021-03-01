@@ -9,6 +9,32 @@ import logging
 from gcode import GCodeCommand
 
 
+def extruder_to_idx(name, active=None):
+    name = name.lower()
+    if name == "active":
+        name = active() if active else ''
+    if name.startswith('mixingextruder'):
+        if name[14:] == '':
+            return 0
+        try:
+            return int(name[14:])
+        except Exception:
+            pass
+    try:
+        return int(name)
+    except Exception:
+        return -1
+
+
+def idx_to_extruder(idx):
+    return "mixingextruder%d" % (idx) if idx else "mixingextruder"
+
+
+def find_mixing_extruder(self, name, active=''):
+    idx = extruder_to_idx(name, lambda: active)
+    return "" if idx < 0 else idx_to_extruder(idx)
+
+
 class MixingMove:
     def __init__(self, x, y, z, e,
                  dist_x, dist_y, dist_z, dist_e,
@@ -31,8 +57,7 @@ class MixingExtruder:
     def __init__(self, config, idx, parent=None):
         self.printer = config.get_printer()
         self.activated = False
-        self.name = config.get_name() if idx == 0 else "%s%d" % (
-            config.get_name(), idx)
+        self.name = idx_to_extruder(idx)
         self.extruder_names = [e.strip()
                                for e in
                                config.get('extruders', '').split(",")
@@ -271,12 +296,10 @@ class MixingExtruder:
                         for i in gradient[1]),
                     method=self.gradient_method,
                     enabled=str(self.gradient_enabled)).items())})
-        status['find_mixing_extruder'] = self.find_mixing_extruder
+        active = self._active_extruder()
+        status['find_mixing_extruder'] = \
+            lambda name: find_mixing_extruder(name, lambda: active)
         return status
-
-    def find_mixing_extruder(self, name):
-        idx = self._to_idx(name)
-        return "" if idx < 0 else self.mixing_extruders[idx].get_name()
 
     def _reset_positions(self):
         pos = [extruder.stepper.get_commanded_position()
@@ -369,22 +392,12 @@ class MixingExtruder:
 
     cmd_ADD_MIXING_GRADIENT_help = "Add mixing gradient"
 
+    def _active_extruder(self):
+        toolhead = self.printer.lookup_object('toolhead')
+        return toolhead.get_extruder().get_name().lower()
+
     def _to_idx(self, name):
-        name = name.lower()
-        if name == "active":
-            toolhead = self.printer.lookup_object('toolhead')
-            name = toolhead.get_extruder().get_name().lower()
-        if name.startswith('mixingextruder'):
-            if name[14:] == '':
-                return 0
-            try:
-                return int(name[14:])
-            except Exception:
-                pass
-        try:
-            return int(name)
-        except Exception:
-            return -1
+        return extruder_to_idx(active=self._active_extruder)
 
     def cmd_ADD_MIXING_GRADIENT(self, gcmd):
         start_extruder = self._to_idx(gcmd.get('START'))
