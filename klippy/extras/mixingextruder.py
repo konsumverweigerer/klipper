@@ -32,7 +32,7 @@ def idx_to_extruder(idx):
 
 def find_mixing_extruder(self, name, active=''):
     idx = extruder_to_idx(name, lambda: active)
-    return "" if idx < 0 else idx_to_extruder(idx)
+    return idx_to_extruder(0 if idx < 0 else idx)
 
 
 class MixingMove:
