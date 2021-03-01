@@ -27,9 +27,11 @@ class GetStatusWrapper:
                               if not s[1]))
         po = self.printer.lookup_object(sval, None)
         logging.info("looking up %s -> %s[%s] from %s",
-                     sval, str(po), str(sval in self.printer.objects),
+                     sval, str(po), str(hasattr(po, 'get_status')),
                      ",".join(self.printer.objects.keys()))
         if po is None or not hasattr(po, 'get_status'):
+            if po is not None:
+                logging.info("attribs %s: %s", sval, str(dir(po)))
             raise KeyError(val)
         if self.eventtime is None:
             self.eventtime = self.printer.get_reactor().monotonic()
