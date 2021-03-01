@@ -29,12 +29,17 @@ class GetStatusWrapper:
         logging.info("looking up %s -> %s[%s]",
                      sval, str(po), str(hasattr(po, 'get_status')))
         try:
+            logging.info("looking up 1")
             if po is None or not hasattr(po, 'get_status'):
                 logging.info("attribs %s[%s]: %s", str(po), sval, str(dir(po)))
                 raise KeyError(val)
+            logging.info("looking up 2")
             if self.eventtime is None:
                 self.eventtime = self.printer.get_reactor().monotonic()
-            self.cache[sval] = res = copy.deepcopy(po.get_status(self.eventtime))
+            logging.info("looking up 3")
+            self.cache[sval] = res = \
+                copy.deepcopy(po.get_status(self.eventtime))
+            logging.info("looking up 4")
             logging.info("lookup success: %s", sval)
             return res
         except Exception as e:
