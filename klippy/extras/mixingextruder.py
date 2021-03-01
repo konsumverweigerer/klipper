@@ -148,9 +148,11 @@ class MixingExtruder:
         gcode = self.printer.lookup_object('gcode')
         # Register commands
         if self.extended_g1:
-            o = gcode.register_command("G1", None)
-            gcode.register_command("G1",
-                                   lambda g: self.cmd_G("G1", o, g))
+            for cmd in ("G1", "G2", "G3"):
+                o = gcode.register_command(cmd, None)
+                if o:
+                    gcode.register_command(cmd,
+                                           lambda g: self.cmd_G(cmd, o, g))
 
     def update_move_time(self, flush_time):
         for extruder in self.extruders:
@@ -412,7 +414,7 @@ class MixingExtruder:
             start_extruder, end_extruder = end_extruder, start_extruder
         for gradient in self.gradients:
             s, _, e = gradient[0]
-            if s < start_height < e or s < end_height < e:
+            if e > start_height and end_height > s:
                 raise gcmd.error(
                     "Could not configure gradient: overlapping starts/ends")
         self.gradients.append((

@@ -23,12 +23,10 @@ class GetStatusWrapper:
             return self.cache[sval]
         po = self.printer.lookup_object(sval, None)
         if po is None or not hasattr(po, 'get_status'):
-            logging.info("attribs %s[%s]: %s", str(po), sval, str(dir(po)))
             raise KeyError(val)
         if self.eventtime is None:
             self.eventtime = self.printer.get_reactor().monotonic()
-        self.cache[sval] = res = copy.deepcopy(
-            po.get_status(self.eventtime))
+        self.cache[sval] = res = copy.deepcopy(po.get_status(self.eventtime))
         return res
     def __contains__(self, val):
         try:
