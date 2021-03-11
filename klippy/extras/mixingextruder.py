@@ -136,11 +136,13 @@ class MixingExtruder:
         if self.activated:
             return
         self.activated = True
+        extruders = self.printer.lookup_object("extruders", None)
         if self.mixing_extruders[0] != self:
             return
         try:
             self.extruders.extend(self.printer.lookup_object(extruder)
                                   for extruder in self.extruder_names)
+            extruders.register_extruder(self.name, self)
         except Exception as e:
             self.extruders.clear()
             logging.error("no extruders found: %s" %
