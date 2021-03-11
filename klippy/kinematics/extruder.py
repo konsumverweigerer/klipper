@@ -160,6 +160,10 @@ class PrinterExtruder:
                 section = 'extruder%d' % (index,)
             extruder = self.printer.lookup_object(section, None)
             if extruder is None:
+                section = 'mixingextruder'
+                if index:
+                    section = 'mixingextruder%d' % (index,)
+                extruder = self.printer.lookup_object(section, None)
                 if temp <= 0.:
                     return
                 raise gcmd.error("Extruder not configured")
