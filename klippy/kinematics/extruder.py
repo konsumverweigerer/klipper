@@ -233,7 +233,7 @@ class DummyExtruder:
 
 class Extruders:
     def __init__(self, config):
-        self.name = extruders
+        self.name = "extruders"
         self.extruders = {}
         self.extruder_names = []
     def register_extruder(self, name, extruder):
