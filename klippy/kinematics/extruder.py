@@ -246,7 +246,7 @@ class Extruders:
 
 def add_printer_objects(config):
     printer = config.get_printer()
-    extruders = extruders(config.getsection(extruder))
+    extruders = extruders(config.getsection('extruder'))
     printer.add_object("extruders", extruders)
     for i in range(99):
         section = 'extruder'
