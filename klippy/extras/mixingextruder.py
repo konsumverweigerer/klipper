@@ -243,7 +243,9 @@ class MixingExtruder:
                     continue
                 w = (dist - start) / (end - start)
                 logging.info("spherical gradient @%.1f(%.1f-%.1f) [%s-%s]" %
-                             (pos, start, end, start_mix, end_mix))
+                             (dist, start, end,
+                              "/".join("%.1f" % x for x in start_mix),
+                              "/".join("%.1f" % x for x in end_mix)))
                 return list(((1. - w) * s + w * e)
                             for s, e in zip(start_mix, end_mix))
         return default
