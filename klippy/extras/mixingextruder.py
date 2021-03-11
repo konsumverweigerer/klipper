@@ -171,7 +171,7 @@ class MixingExtruder:
                         move.start_pos[3],
                         move.end_pos[3],
                         move.axes_d[3],
-                        move.move_d
+                        move.move_d)
                      ),
                      mixing, idx)
         return MixingMove(move.start_pos[0], move.start_pos[1],
