@@ -158,7 +158,7 @@ class PrinterExtruder:
         if index is not None:
             extruders = self.printer.lookup_object("extruders", None)
             printer_extruders = extruders.get_extruders()
-            if index < len(printer_extruders)
+            if index < len(printer_extruders):
                 extruder = printer_extruders[index]
             if extruder is None:
                 if temp <= 0.:
