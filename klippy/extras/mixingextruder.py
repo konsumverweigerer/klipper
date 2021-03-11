@@ -218,6 +218,7 @@ class MixingExtruder:
             start, _, end = heights
             start_mix, end_mix = (self.mixing_extruders[i].mixing
                                   for i in refs)
+            logging.info("start/end mix %s %s", start_mix, end_mix)
             if self.gradient_method == 'linear':
                 zpos = start_pos[2]
                 if zpos <= start:
