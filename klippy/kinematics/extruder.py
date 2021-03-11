@@ -160,7 +160,7 @@ class PrinterExtruder:
             printer_extruders = extruders.get_extruders()
             if index < len(printer_extruders):
                 extruder = printer_extruders[index]
-            if extruder is None:
+            else:
                 if temp <= 0.:
                     return
                 raise gcmd.error("Extruder not configured")
