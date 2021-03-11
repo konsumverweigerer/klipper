@@ -166,6 +166,14 @@ class MixingExtruder:
         if not mixing:
             return None
         # TODO: don't use move properties
+        logging.info("scale move %s with %.2f for %d",
+                     "/".join("%.2f" % x for x in (
+                        move.start_pos[3],
+                        move.end_pos[3],
+                        move.axes_d[3],
+                        move.move_d
+                     ),
+                     mixing, idx)
         return MixingMove(move.start_pos[0], move.start_pos[1],
                           move.start_pos[2], self.positions[idx],
                           move.axes_d[0], move.axes_d[1], move.axes_d[2],
@@ -221,7 +229,6 @@ class MixingExtruder:
             start, _, end = heights
             start_mix, end_mix = (self.mixing_extruders[i].mixing
                                   for i in refs)
-            logging.info("start/end mix %s %s", start_mix, end_mix)
             if self.gradient_method == 'linear':
                 zpos = start_pos[2]
                 if zpos <= start:
@@ -238,6 +245,8 @@ class MixingExtruder:
                             for s, e in zip(start_mix, end_mix))
             if self.gradient_method == 'spherical':
                 pos = [(x + y) / 2. for x, y in zip(start_pos, end_pos)]
+                logging.info("spherical gradient at (%s)",
+                             ", ".join("%.1f" % x for x in pos))
                 dist = math.sqrt(sum(x**2 for x in pos))
                 if dist <= start:
                     return start_mix
@@ -245,12 +254,14 @@ class MixingExtruder:
                     default = end_mix
                     continue
                 w = (dist - start) / (end - start)
-                logging.info("spherical gradient @%.1f(%.1f-%.1f) [%s-%s]" %
+                mix = list(((1. - w) * s + w * e)
+                            for s, e in zip(start_mix, end_mix))
+                logging.info("spherical gradient @%.1f(%.1f-%.1f) [%s-%s]=%s" %
                              (dist, start, end,
                               "/".join("%.1f" % x for x in start_mix),
-                              "/".join("%.1f" % x for x in end_mix)))
-                return list(((1. - w) * s + w * e)
-                            for s, e in zip(start_mix, end_mix))
+                              "/".join("%.1f" % x for x in end_mix),
+                              "/".join("%.1f" % x for x in mix)))
+                return mix
         return default
 
     def check_move(self, move):
@@ -268,6 +279,8 @@ class MixingExtruder:
         for idx, extruder in enumerate(self.extruders):
             scaled_move = self._scale_move(move, idx, mixing)
             if scaled_move:
+                logging.info("moving %s with %.2f",
+                    extruder.name, scaled_move.axes_d[3])
                 extruder.move(print_time, scaled_move)
                 self.positions[idx] = scaled_move.end_pos[3]
         self.commanded_pos = move.end_pos[3]
