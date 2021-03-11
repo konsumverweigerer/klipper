@@ -157,6 +157,7 @@ class PrinterExtruder:
         current_extruder = self.printer.lookup_object('toolhead').get_extruder()
         if index is not None:
             extruders = self.printer.lookup_object("extruders", None)
+            logging.info("extruders", extruders.extruder_names)
             printer_extruders = extruders.get_extruders()
             if index < len(printer_extruders):
                 extruder = printer_extruders[index]
