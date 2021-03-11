@@ -138,6 +138,7 @@ class MixingExtruder:
         self.activated = True
         extruders = self.printer.lookup_object("extruders", None)
         if self.mixing_extruders[0] != self:
+            extruders.register_extruder(self.name, self)
             return
         try:
             self.extruders.extend(self.printer.lookup_object(extruder)
