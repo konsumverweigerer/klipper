@@ -139,10 +139,10 @@ class MixingExtruder:
         if self.mixing_extruders[0] != self:
             return
         try:
-            self.extruders = [self.printer.lookup_object(extruder)
-                              for extruder in self.extruder_names]
+            self.extruders.extend(self.printer.lookup_object(extruder)
+                                  for extruder in self.extruder_names)
         except Exception as e:
-            self.extruders = []
+            self.extruders.clear()
             logging.error("no extruders found: %s" %
                           (", ".join(self.extruder_names)), e)
 
