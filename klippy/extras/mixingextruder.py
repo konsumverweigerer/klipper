@@ -68,8 +68,8 @@ class MixingExtruder:
         self.mixing_extruders[idx] = self
         self.mixing = self._init_mixings(idx, len(self.extruder_names))
         self.commanded_pos = 0
-        self.positions = [0. for p in range(len(self.extruder_names))
-                          ] if idx == 0 else self.mixing_extruders[0].positions
+        self.positions = parent.positions if parent else \
+            [0. for p in range(len(self.extruder_names))]
         self.ratios = [0 for p in range(len(self.extruder_names))]
         self.current_mixing = tuple(self.ratios)
         self.gradient_enabled = False
@@ -174,7 +174,7 @@ class MixingExtruder:
                         move.move_d)
                      ),
                      mixing, idx)
-        return MixingMove(move.start_pos[0], move.start_pos[1],
+        move = MixingMove(move.start_pos[0], move.start_pos[1],
                           move.start_pos[2], self.positions[idx],
                           move.axes_d[0], move.axes_d[1], move.axes_d[2],
                           mixing * move.axes_d[3],
@@ -189,6 +189,14 @@ class MixingExtruder:
                           move.cruise_t if hasattr(
                               move, "cruise_t") else move.min_move_t,
                           move.decel_t if hasattr(move, "decel_t") else 0.)
+        logging.info("scaled move %s for %d",
+                     "/".join("%.2f" % x for x in (
+                        move.start_pos[3],
+                        move.end_pos[3],
+                        move.axes_d[3],
+                        move.move_d)
+                     ), idx)
+        return move
 
     def _check_move(self, scaled_move, move):
         axis_r = scaled_move.axes_r[3]
@@ -279,8 +287,9 @@ class MixingExtruder:
         for idx, extruder in enumerate(self.extruders):
             scaled_move = self._scale_move(move, idx, mixing)
             if scaled_move:
-                logging.info("moving %s with %.2f",
-                    extruder.name, scaled_move.axes_d[3])
+                logging.info("moving %d with %.5f to %.4f",
+                             idx, scaled_move.axes_d[3],
+                             self.positions[idx])
                 extruder.move(print_time, scaled_move)
                 self.positions[idx] = scaled_move.end_pos[3]
         self.commanded_pos = move.end_pos[3]
