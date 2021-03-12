@@ -61,7 +61,7 @@ class MixingExtruder:
                                config.get('extruders', '').split(",")
                                if len(e)]
         if not len(self.extruder_names):
-            raise self._mcu.get_printer().config_error(
+            raise self.printer.config_error(
                 "No extruders configured for mixing")
         self.extruders = parent.extruders if parent else []
         self.mixing_extruders = parent.mixing_extruders if parent else {}
@@ -119,9 +119,9 @@ class MixingExtruder:
         idx = idx - extruders
         if extruders == 3:
             if idx < 2 * extruders:
-                return [[0. if p == x else (1 + ((x + y) % 2)) / 3.
+                return [[0. if p == x else (1 + (((p - x) % 3 + y) % 2)) / 3.
                          for p in range(extruders)]
-                        for x in range(extruders) for y in (1, 2)][idx]
+                        for x in range(extruders) for y in (0, 1)][idx]
             idx = idx - 2 * extruders
         elif extruders > 3:
             if idx < (extruders * (extruders - 1) / 2):
@@ -198,39 +198,6 @@ class MixingExtruder:
                      ), idx)
         return move
 
-    def _check_move(self, scaled_move, move):
-        axis_r = scaled_move.axes_r[3]
-        axis_d = scaled_move.axes_d[3]
-        if not self.get_heater().can_extrude:
-            raise self.printer.command_error(
-                "Extrude below minimum temp\n"
-                "See the 'min_extrude_temp' config option for details")
-        if (not move.axes_d[0] and not move.axes_d[1]) or axis_r < 0.:
-            # Extrude only move (or retraction move) - limit accel and velocity
-            if abs(axis_d) > self.extruders[0].max_e_dist:
-                raise self.printer.command_error(
-                    "Extrude only move too long (%.3fmm vs %.3fmm)\n"
-                    "See the 'max_extrude_only_distance' config"
-                    " option for details" % (axis_d,
-                                             self.extruders[0].max_e_dist))
-            inv_extrude_r = 1. / abs(axis_r)
-            move.limit_speed(self.extruders[0].max_e_velocity * inv_extrude_r,
-                             self.extruders[0].max_e_accel * inv_extrude_r)
-        elif axis_r > self.extruders[0].max_extrude_ratio:
-            if axis_d <= self.extruders[0].nozzle_diameter * \
-                    self.extruders[0].max_extrude_ratio:
-                # Permit extrusion if amount extruded is tiny
-                return
-            area = axis_r * self.extruders[0].filament_area
-            logging.debug("Overextrude: %s vs %s (area=%.3f dist=%.3f)",
-                          axis_r, self.extruders[0].max_extrude_ratio, area,
-                          move.move_d)
-            raise self.printer.command_error(
-                "Move exceeds maximum extrusion (%.3fmm^2 vs %.3fmm^2)\n"
-                "See the 'max_extrude_cross_section' config option for details"
-                % (area, self.extruders[0].max_extrude_ratio
-                   * self.extruders[0].filament_area))
-
     def _get_gradient(self, start_pos, end_pos):
         default = self.mixing
         for heights, refs in self.gradients:
@@ -263,7 +230,7 @@ class MixingExtruder:
                     continue
                 w = (dist - start) / (end - start)
                 mix = list(((1. - w) * s + w * e)
-                            for s, e in zip(start_mix, end_mix))
+                           for s, e in zip(start_mix, end_mix))
                 logging.info("spherical gradient @%.1f(%.1f-%.1f) [%s-%s]=%s" %
                              (dist, start, end,
                               "/".join("%.1f" % x for x in start_mix),
@@ -273,15 +240,10 @@ class MixingExtruder:
         return default
 
     def check_move(self, move):
-        mixing = self.mixing if not self.gradient_enabled \
-            else self._get_gradient(move.start_pos[:3], move.end_pos[:3])
-        for idx, extruder in enumerate(self.extruders):
-            scaled_move = self._scale_move(move, idx, mixing)
-            if scaled_move:
-                self._check_move(scaled_move, move)
+        self.extruders[0].check_move(move)
 
     def move(self, print_time, move):
-        mixing = self.mixing if self.gradient_enabled \
+        mixing = self.mixing if not self.gradient_enabled \
             else self._get_gradient(move.start_pos[:3], move.end_pos[:3])
         self.current_mixing = tuple(mixing)
         for idx, extruder in enumerate(self.extruders):
