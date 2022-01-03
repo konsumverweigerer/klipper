@@ -1,7 +1,9 @@
+# G-Codes
+
 This document describes the commands that Klipper supports. These are
 commands that one may enter into the OctoPrint terminal tab.
 
-# G-Code commands
+## G-Code commands
 
 Klipper supports the following standard G-Code commands:
 - Move (G0 or G1): `G1 [X<pos>] [Y<pos>] [Z<pos>] [E<pos>] [F<speed>]`
@@ -48,7 +50,7 @@ to implement it with a custom
 example, one might use this to implement: `G12`, `G29`, `G30`, `G31`,
 `M42`, `M80`, `M81`, `T1`, etc.
 
-## G-Code SD card commands
+### G-Code SD card commands
 
 Klipper also supports the following standard G-Code commands if the
 [virtual_sdcard config section](Config_Reference.md#virtual_sdcard) is
@@ -66,7 +68,7 @@ In addition, the following extended commands are availble when the
 - Load a file and start SD print: `SDCARD_PRINT_FILE FILENAME=<filename>`
 - Unload file and clear SD state: `SDCARD_RESET_FILE`
 
-## G-Code arcs
+### G-Code arcs
 
 The following standard G-Code commands are available if a
 [gcode_arcs config section](Config_Reference.md#gcode_arcs) is
@@ -74,7 +76,7 @@ enabled:
 - Controlled Arc Move (G2 or G3): `G2 [X<pos>] [Y<pos>] [Z<pos>]
   [E<pos>] [F<speed>] I<value> J<value>`
 
-## G-Code firmware retraction
+### G-Code firmware retraction
 
 The following standard G-Code commands are available if a
 [firmware_retraction config section](Config_Reference.md#firmware_retraction)
@@ -82,20 +84,20 @@ is enabled:
 - Retract: `G10`
 - Unretract: `G11`
 
-## G-Code display commands
+### G-Code display commands
 
 The following standard G-Code commands are available if a
 [display config section](Config_Reference.md#display) is enabled:
 - Display Message: `M117 <message>`
 - Set build percentage: `M73 P<percent>`
 
-## Other available G-Code commands
+### Other available G-Code commands
 
 The following standard G-Code commands are currently available, but
 using them is not recommended:
 - Get Endstop Status: `M119` (Use QUERY_ENDSTOPS instead.)
 
-# Extended G-Code Commands
+## Extended G-Code Commands
 
 Klipper uses "extended" G-Code commands for general configuration and
 status.  These extended commands all follow a similar format - they
@@ -161,8 +163,7 @@ The following standard commands are supported:
   MINIMUM and/or at or below the supplied MAXIMUM.
 - `SET_VELOCITY_LIMIT [VELOCITY=<value>] [ACCEL=<value>]
   [ACCEL_TO_DECEL=<value>] [SQUARE_CORNER_VELOCITY=<value>]`: Modify
-  the printer's velocity limits. Note that one may only set values
-  less than or equal to the limits specified in the config file.
+  the printer's velocity limits.
 - `SET_HEATER_TEMPERATURE HEATER=<heater_name> [TARGET=<target_temperature>]`:
   Sets the target temperature for a heater. If a target temperature is
   not supplied, the target is 0.
@@ -207,14 +208,37 @@ The following standard commands are supported:
   for calibrating a Z position_endstop config setting. See the
   MANUAL_PROBE command for details on the parameters and the
   additional commands available while the tool is active.
-- `TUNING_TOWER COMMAND=<command> PARAMETER=<name> START=<value>
-  FACTOR=<value> [BAND=<value>]`: A tool for tuning a parameter on
-  each Z height during a print. The tool will run the given COMMAND
-  with the given PARAMETER assigned to the value using the formula
-  `value = start + factor * z_height`. If BAND is provided then the
-  adjustment will only be made every BAND millimeters of z height - in
-  that case the formula used is `value = start + factor *
-  ((floor(z_height / band) + .5) * band)`.
+- `Z_OFFSET_APPLY_ENDSTOP`: Take the current Z Gcode offset (aka,
+  babystepping), and subtract it from the stepper_z endstop_position.
+  This acts to take a frequently used babystepping value, and "make
+  it permanent".  Requires a `SAVE_CONFIG` to take effect.
+- `TUNING_TOWER COMMAND=<command> PARAMETER=<name> START=<value> [SKIP=<value>]
+  [FACTOR=<value> [BAND=<value>]] | [STEP_DELTA=<value> STEP_HEIGHT=<value>]`:
+  A tool for tuning a parameter on each Z height during a print.
+  The tool will run the given `COMMAND` with the given `PARAMETER`
+  assigned to a value that varies with `Z` according to a formula. Use `FACTOR`
+  if you will use a ruler or calipers to measure the Z height of the optimum
+  value, or `STEP_DELTA` and `STEP_HEIGHT` if the tuning tower model has bands
+  of discrete values as is common with temperature towers. If `SKIP=<value>`
+  is specified, the tuning process doesn't begin until Z height `<value>` is
+  reached, and below that the value will be set to `START`; in this case, the
+  `z_height` used in the formulas below is actually `max(z - skip, 0)`.
+  There are three possible combinations of options:
+  - `FACTOR`: The value changes at a rate of `factor` per millimeter.
+    The formula used is
+    `value = start + factor * z_height`.
+    You can plug the optimum Z height directly into the formula to
+    determine the optimum parameter value.
+  - `FACTOR` and `BAND`: The value changes at an average rate of `factor` per
+    millimeter, but in discrete bands where the adjustment will only be made
+    every `BAND` millimeters of Z height.
+    The formula used is
+    `value = start + factor * ((floor(z_height / band) + .5) * band)`.
+  - `STEP_DELTA` and `STEP_HEIGHT`: The value changes by `STEP_DELTA` every
+    `STEP_HEIGHT` millimeters. The formula used is
+    `value = start + step_delta * floor(z_height / step_height)`.
+    You can simply count bands or read tuning tower labels to determine the
+    optimum value.
 - `SET_DISPLAY_GROUP [DISPLAY=<display>] GROUP=<group>`: Set the
   active display group of an lcd display. This allows to define
   multiple display data groups in the config,
@@ -237,7 +261,7 @@ The following standard commands are supported:
 - `STATUS`: Report the Klipper host software status.
 - `HELP`: Report the list of available extended G-Code commands.
 
-## G-Code Macro Commands
+### G-Code Macro Commands
 
 The following command is available when a
 [gcode_macro config section](Config_Reference.md#gcode_macro) is
@@ -248,7 +272,7 @@ enabled (also see the
   gcode_macro variable at run-time. The provided VALUE is parsed as a
   Python literal.
 
-## Custom Pin Commands
+### Custom Pin Commands
 
 The following command is available when an
 [output_pin config section](Config_Reference.md#output_pin) is
@@ -258,7 +282,7 @@ enabled:
 Note: Hardware PWM does not currently support the CYCLE_TIME parameter
 and will use the cycle time defined in the config.
 
-## Manually Controlled Fans Commands
+### Manually Controlled Fans Commands
 
 The following command is available when a
 [fan_generic config section](Config_Reference.md#fan_generic) is
@@ -266,13 +290,13 @@ enabled:
 - `SET_FAN_SPEED FAN=config_name SPEED=<speed>` This command sets
   the speed of a fan. <speed> must be between 0.0 and 1.0.
 
-## Neopixel and Dotstar Commands
+### Neopixel and Dotstar Commands
 
 The following command is available when a
 [neopixel config section](Config_Reference.md#neopixel) or
 [dotstar config section](Config_Reference.md#dotstar) is enabled:
 - `SET_LED LED=<config_name> RED=<value> GREEN=<value> BLUE=<value>
-  WHITE=<value> [INDEX=<index>] [TRANSMIT=0]`: This sets the LED
+  WHITE=<value> [INDEX=<index>] [TRANSMIT=0] [SYNC=1]`: This sets the LED
   output. Each color `<value>` must be between 0.0 and 1.0. The WHITE
   option is only valid on RGBW LEDs. If multiple LED chips are
   daisy-chained then one may specify INDEX to alter the color of just
@@ -281,9 +305,14 @@ The following command is available when a
   to the provided color. If TRANSMIT=0 is specified then the color
   change will only be made on the next SET_LED command that does not
   specify TRANSMIT=0; this may be useful in combination with the INDEX
-  parameter to batch multiple updates in a daisy-chain.
+  parameter to batch multiple updates in a daisy-chain. By default, the
+  SET_LED command will sync it's changes with other ongoing gcode commands.
+  This can lead to undesirable behavior if LEDs are being set while the
+  printer is not printing as it will reset the idle timeout. If careful
+  timing is not needed, the optional SYNC=0 parameter can be specified to
+  apply the changes instantly and not reset the idle timeout.
 
-## Servo Commands
+### Servo Commands
 
 The following commands are available when a
 [servo config section](Config_Reference.md#servo) is enabled:
@@ -291,7 +320,7 @@ The following commands are available when a
   Set the servo position to the given angle (in degrees) or pulse
   width (in seconds). Use `WIDTH=0` to disable the servo output.
 
-## Manual stepper Commands
+### Manual stepper Commands
 
 The following command is available when a
 [manual_stepper config section](Config_Reference.md#manual_stepper) is
@@ -315,7 +344,7 @@ enabled:
   future G-Code movement commands may run in parallel with the stepper
   movement.
 
-## Mixingextruder Commands
+### Mixingextruder Commands
 
 The following commands are available when a
 [mixingextruder config section](Config_Reference.md#mixingextruder) is
@@ -353,7 +382,7 @@ enabled:
 - `MIXING_STATUS EXTRUDER=<mixingextruder>`: Returns the configuration
   and status of the given mixing extruder.
 
-## Extruder stepper Commands
+### Extruder stepper Commands
 
 The following command is available when an
 [extruder_stepper config section](Config_Reference.md#extruder_stepper)
@@ -363,7 +392,7 @@ is enabled:
   STEPPER to become synchronized to the given EXTRUDER, overriding
   the extruder defined in the "extruder_stepper" config section.
 
-## Probe
+### Probe
 
 The following commands are available when a
 [probe config section](Config_Reference.md#probe) is enabled (also see
@@ -385,13 +414,17 @@ the [probe calibrate guide](Probe_Calibrate.md)):
   section.
 - `PROBE_CALIBRATE [SPEED=<speed>] [<probe_parameter>=<value>]`: Run a
   helper script useful for calibrating the probe's z_offset. See the
-  PROBE command for details on the optional probe parameters. See the
-  MANUAL_PROBE command for details on the SPEED parameter and the
+  PROBE command for details on the optional probe parameters. See
+  the MANUAL_PROBE command for details on the SPEED parameter and the
   additional commands available while the tool is active. Please note,
-  the PROBE_CALIBRATE command uses the speed variable to move in XY direction
-  as well as Z.
+  the PROBE_CALIBRATE command uses the speed variable
+  to move in XY direction as well as Z.
+- `Z_OFFSET_APPLY_PROBE`: Take the current Z Gcode offset (aka,
+  babystepping), and subtract if from the probe's z_offset.
+  This acts to take a frequently used babystepping value, and "make
+  it permanent".  Requires a `SAVE_CONFIG` to take effect.
 
-## BLTouch
+### BLTouch
 
 The following command is available when a
 [bltouch config section](Config_Reference.md#bltouch) is enabled (also
@@ -407,7 +440,7 @@ see the [BL-Touch guide](BLTouch.md)):
 - `BLTOUCH_STORE MODE=<output_mode>`: This stores an output mode in the
   EEPROM of a BLTouch V3.1 Available output_modes are: `5V`, `OD`
 
-## Delta Calibration
+### Delta Calibration
 
 The following commands are available when the
 [delta_calibrate config section](Config_Reference.md#linear-delta-kinematics)
@@ -422,7 +455,7 @@ is enabled (also see the [delta calibrate guide](Delta_Calibrate.md)):
 - `DELTA_ANALYZE`: This command is used during enhanced delta
   calibration. See [Delta Calibrate](Delta_Calibrate.md) for details.
 
-## Bed Tilt
+### Bed Tilt
 
 The following commands are available when the
 [bed_tilt config section](Config_Reference.md#bed_tilt) is enabled:
@@ -434,7 +467,7 @@ The following commands are available when the
   MANUAL_PROBE command above for details on the additional commands
   available while this tool is active.
 
-## Mesh Bed Leveling
+### Mesh Bed Leveling
 
 The following commands are available when the
 [bed_mesh config section](Config_Reference.md#bed_mesh) is enabled
@@ -467,8 +500,12 @@ The following commands are available when the
   supplied name from persistent memory.  Note that after SAVE or
   REMOVE operations have been run the SAVE_CONFIG gcode must be run
   to make the changes to peristent memory permanent.
+- `BED_MESH_OFFSET [X=<value>] [Y=<value>]`:  Applies X and/or Y
+  offsets to the mesh lookup.  This is useful for printers with
+  independent extruders, as an offset is necessary to produce
+  correct Z adjustment after a tool change.
 
-## Bed Screws Helper
+### Bed Screws Helper
 
 The following commands are available when the
 [bed_screws config section](Config_Reference.md#bed_screws) is enabled
@@ -480,21 +517,22 @@ The following commands are available when the
   the bed screws so that the bed is a constant distance from the
   nozzle.
 
-## Bed Screws Tilt Adjust Helper
+### Bed Screws Tilt Adjust Helper
 
 The following commands are available when the
 [screws_tilt_adjust config section](Config_Reference.md#screws_tilt_adjust)
 is enabled (also see the
 [manual level guide](Manual_Level.md#adjusting-bed-leveling-screws-using-the-bed-probe)):
-- `SCREWS_TILT_CALCULATE [<probe_parameter>=<value>]`: This command
-  will invoke the bed screws adjustment tool. It will command the
+- `SCREWS_TILT_CALCULATE [DIRECTION=CW|CCW] [<probe_parameter>=<value>]`:
+  This command will invoke the bed screws adjustment tool. It will command the
   nozzle to different locations (as defined in the config file)
   probing the z height and calculate the number of knob turns to
-  adjust the bed level. See the PROBE command for details on the
-  optional probe parameters.
+  adjust the bed level. If DIRECTION is specified, the knob turns will all
+  be in the same direction, clockwise (CW) or counterclockwise (CCW).
+  See the PROBE command for details on the optional probe parameters.
   IMPORTANT: You MUST always do a G28 before using this command.
 
-## Z Tilt
+### Z Tilt
 
 The following commands are available when the
 [z_tilt config section](Config_Reference.md#z_tilt) is enabled:
@@ -503,7 +541,7 @@ The following commands are available when the
   adjustments to each Z stepper to compensate for tilt. See the PROBE
   command for details on the optional probe parameters.
 
-## Dual Carriages
+### Dual Carriages
 
 The following command is available when the
 [dual_carriage config section](Config_Reference.md#dual_carriage) is
@@ -512,7 +550,7 @@ enabled:
   carriage. It is typically invoked from the activate_gcode and
   deactivate_gcode fields in a multiple extruder configuration.
 
-## TMC2130, TMC2660, TMC2208, TMC2209 and TMC5160
+### TMC stepper drivers
 
 The following commands are available when any of the
 [tmcXXXX config sections](Config_Reference.md#tmc-stepper-driver-configuration)
@@ -524,16 +562,16 @@ are enabled:
   turned off then back on.
 - `SET_TMC_CURRENT STEPPER=<name> CURRENT=<amps> HOLDCURRENT=<amps>`:
   This will adjust the run and hold currents of the TMC driver.
-  HOLDCURRENT is applicable only to the tmc2130, tmc2208, tmc2209 and tmc5160.
-- `SET_TMC_FIELD STEPPER=<name> FIELD=<field> VALUE=<value>`: This will
-  alter the value of the specified register field of the TMC driver.
-  This command is intended for low-level diagnostics and debugging only because
-  changing the fields during run-time can lead to undesired and potentially
-  dangerous behavior of your printer. Permanent changes should be made using
-  the printer configuration file instead. No sanity checks are performed for the
-  given values.
+  (HOLDCURRENT is not applicable to tmc2660 drivers.)
+- `SET_TMC_FIELD STEPPER=<name> FIELD=<field> VALUE=<value>`: This
+  will alter the value of the specified register field of the TMC
+  driver. This command is intended for low-level diagnostics and
+  debugging only because changing the fields during run-time can lead
+  to undesired and potentially dangerous behavior of your printer.
+  Permanent changes should be made using the printer configuration
+  file instead. No sanity checks are performed for the given values.
 
-## Endstop adjustments by stepper phase
+### Endstop adjustments by stepper phase
 
 The following commands are available when an
 [endstop_phase config section](Config_Reference.md#endstop_phase) is
@@ -545,7 +583,7 @@ enabled (also see the [endstop phase guide](Endstop_Phase.md)):
   setting to be written to the config file (in conjunction with the
   SAVE_CONFIG command).
 
-## Force movement
+### Force movement
 
 The following commands are available when the
 [force_move config section](Config_Reference.md#force_move) is
@@ -555,15 +593,13 @@ enabled:
   the given distance (in mm) at the given constant velocity (in
   mm/s). If ACCEL is specified and is greater than zero, then the
   given acceleration (in mm/s^2) will be used; otherwise no
-  acceleration is performed. If acceleration is not performed then it
-  can lead to the micro-controller reporting "No next step" errors
-  (avoid these errors by specifying an ACCEL value or use a very low
-  VELOCITY). No boundary checks are performed; no kinematic updates
-  are made; other parallel steppers on an axis will not be moved. Use
-  caution as an incorrect command could cause damage! Using this
-  command will almost certainly place the low-level kinematics in an
-  incorrect state; issue a G28 afterwards to reset the kinematics.
-  This command is intended for low-level diagnostics and debugging.
+  acceleration is performed. No boundary checks are performed; no
+  kinematic updates are made; other parallel steppers on an axis will
+  not be moved. Use caution as an incorrect command could cause
+  damage! Using this command will almost certainly place the low-level
+  kinematics in an incorrect state; issue a G28 afterwards to reset
+  the kinematics. This command is intended for low-level diagnostics
+  and debugging.
 - `SET_KINEMATIC_POSITION [X=<value>] [Y=<value>] [Z=<value>]`: Force
   the low-level kinematic code to believe the toolhead is at the given
   cartesian position. This is a diagnostic and debugging command; use
@@ -574,7 +610,18 @@ enabled:
   future boundary checks; issue a G28 afterwards to reset the
   kinematics.
 
-## Send message (respond) to host
+### SDcard loop
+
+When the [sdcard_loop config section](Config_Reference.md#sdcard_loop)
+is enabled, the following extended commands are available:
+- `SDCARD_LOOP_BEGIN COUNT=<count>`: Begin a looped section in the SD
+  print. A count of 0 indicates that the section should be looped
+  indefinately.
+- `SDCARD_LOOP_END`: End a looped section in the SD print.
+- `SDCARD_LOOP_DESIST`: Complete existing loops without further
+  iterations.
+
+### Send message (respond) to host
 
 The following commands are availabe when the
 [respond config section](Config_Reference.md#respond) is enabled.
@@ -593,7 +640,7 @@ The following commands are availabe when the
   prepended with `<prefix>`. (The `PREFIX` parameter will take
   priority over the `TYPE` parameter)
 
-## Pause Resume
+### Pause Resume
 
 The following commands are available when the
 [pause_resume config section](Config_Reference.md#pause_resume) is
@@ -608,11 +655,12 @@ enabled:
   print. This is useful if one decides to cancel a print after a
   PAUSE. It is recommended to add this to your start gcode to make
   sure the paused state is fresh for each print.
+- `CANCEL_PRINT`: Cancels the current print.
 
-## Filament Sensor
+### Filament Sensor
 
 The following command is available when the
-[filament_switch_sensor config section](Config_Reference.md#filament_switch_sensor)
+[filament_switch_sensor or filament_motion_sensor config section](Config_Reference.md#filament_switch_sensor)
 is enabled.
 - `QUERY_FILAMENT_SENSOR SENSOR=<sensor_name>`: Queries the current
   status of the filament sensor. The data displayed on the terminal
@@ -621,7 +669,7 @@ is enabled.
   filament sensor on/off. If ENABLE is set to 0, the filament sensor
   will be disabled, if set to 1 it is enabled.
 
-## Firmware Retraction
+### Firmware Retraction
 
 The following commands are available when the
 [firmware_retraction config section](Config_Reference.md#firmware_retraction)
@@ -649,11 +697,11 @@ retraction required.
 - `G11`: Unretracts the extruder using the currently configured
   parameters.
 
-## Skew Correction
+### Skew Correction
 
 The following commands are available when the
 [skew_correction config section](Config_Reference.md#skew_correction)
-is enabled (also see the [skew correction guide](skew_correction.md)):
+is enabled (also see the [Skew Correction](Skew_Correction.md) guide):
 - `SET_SKEW [XY=<ac_length,bd_length,ad_length>] [XZ=<ac,bd,ad>]
   [YZ=<ac,bd,ad>] [CLEAR=<0|1>]`: Configures the [skew_correction]
   module with measurements (in mm) taken from a calibration print.
@@ -668,7 +716,7 @@ is enabled (also see the [skew correction guide](skew_correction.md)):
   degrees) based on a measured print. This can be useful for
   determining the printer's current skew after correction has been
   applied. It may also be useful before correction is applied to
-  determine if skew correction is necessary. See skew_correction.md
+  determine if skew correction is necessary. See [Skew Correction](Skew_Correction.md)
   for details on skew calibration objects and measurements.
 - `SKEW_PROFILE [LOAD=<name>] [SAVE=<name>] [REMOVE=<name>]`: Profile
   management for skew_correction. LOAD will restore skew state from
@@ -679,7 +727,7 @@ is enabled (also see the [skew correction guide](skew_correction.md)):
   SAVE_CONFIG gcode must be run to make the changes to peristent
   memory permanent.
 
-## Delayed GCode
+### Delayed GCode
 
 The following command is enabled if a
 [delayed_gcode config section](Config_Reference.md#delayed_gcode) has
@@ -690,7 +738,7 @@ been enabled (also see the
   for gcode execution.  A value of 0 will cancel a pending delayed gcode
   from executing.
 
-## Save Variables
+### Save Variables
 
 The following command is enabled if a
 [save_variables config section](Config_Reference.md#save_variables)
@@ -701,7 +749,7 @@ has been enabled:
   startup and can be used in gcode macros. The provided VALUE is
   parsed as a Python literal.
 
-## Resonance compensation
+### Resonance compensation
 
 The following command is enabled if an
 [input_shaper config section](Config_Reference.md#input_shaper) has
@@ -720,7 +768,7 @@ been enabled (also see the
   [config reference](Config_Reference.md#input_shaper) for more
   details on each of these parameters.
 
-## Temperature Fan Commands
+### Temperature Fan Commands
 
 The following command is available when a
 [temperature_fan config section](Config_Reference.md#temperature_fan)
@@ -730,33 +778,38 @@ is enabled:
   temperature_fan. If a target is not supplied, it is set to the
   specified temperature in the config file. If speeds are not supplied, no change is applied.
 
-## Adxl345 Accelerometer Commands
+### Adxl345 Accelerometer Commands
 
 The following commands are available when an
 [adxl345 config section](Config_Reference.md#adxl345) is enabled:
-- `ACCELEROMETER_MEASURE [CHIP=<config_name>] [RATE=<value>]
-  [NAME=<value>]`: Starts accelerometer measurements at the requested
-  number of samples per second. If CHIP is not specified it defaults
-  to "default". Valid rates are 25, 50, 100, 200, 400, 800, 1600,
-  and 3200. The command works in a start-stop mode: when executed for
-  the first time, it starts the measurements, next execution stops
-  them. If RATE is not specified, then the default value is used
-  (either from `printer.cfg` or `3200` default value). The results of
-  measurements are written to a file named
+- `ACCELEROMETER_MEASURE [CHIP=<config_name>] [NAME=<value>]`: Starts
+  accelerometer measurements at the requested number of samples per
+  second. If CHIP is not specified it defaults to "adxl345". The
+  command works in a start-stop mode: when executed for the first
+  time, it starts the measurements, next execution stops them. The
+  results of measurements are written to a file named
   `/tmp/adxl345-<chip>-<name>.csv` where `<chip>` is the name of the
-  accelerometer chip (`my_chip_name` from `[adxl345 my_chip_name]`) and
-  `<name>` is the optional NAME parameter. If NAME is not specified it
-  defaults to the current time in "YYYYMMDD_HHMMSS" format. If the
-  accelerometer does not have a name in its config section (simply
-  `[adxl345]`) <chip> part of the name is not generated.
+  accelerometer chip (`my_chip_name` from `[adxl345 my_chip_name]`)
+  and `<name>` is the optional NAME parameter. If NAME is not
+  specified it defaults to the current time in "YYYYMMDD_HHMMSS"
+  format. If the accelerometer does not have a name in its config
+  section (simply `[adxl345]`) then `<chip>` part of the name is not
+  generated.
 - `ACCELEROMETER_QUERY [CHIP=<config_name>] [RATE=<value>]`: queries
   accelerometer for the current value. If CHIP is not specified it
-  defaults to "default". If RATE is not specified, the default value
+  defaults to "adxl345". If RATE is not specified, the default value
   is used. This command is useful to test the connection to the
   ADXL345 accelerometer: one of the returned values should be a
   free-fall acceleration (+/- some noise of the chip).
+- `ACCELEROMETER_DEBUG_READ [CHIP=<config_name>] REG=<register>`: queries
+  ADXL345 register <register> (e.g. 44 or 0x2C). Can be useful for
+  debugging purposes.
+- `ACCELEROMETER_DEBUG_WRITE [CHIP=<config_name>] REG=<reg> VAL=<value>`:
+  writes raw <value> into a register <register>. Both <value> and
+  <register> can be a decimal or a hexadecimal integer. Use with care,
+  and refer to ADXL345 data sheet for the reference.
 
-## Resonance Testing Commands
+### Resonance Testing Commands
 
 The following commands are available when a
 [resonance_tester config section](Config_Reference.md#resonance_tester)
@@ -767,9 +820,13 @@ is enabled (also see the
 - `TEST_RESONANCES AXIS=<axis> OUTPUT=<resonances,raw_data>
   [NAME=<name>] [FREQ_START=<min_freq>] [FREQ_END=<max_freq>]
   [HZ_PER_SEC=<hz_per_sec>] [INPUT_SHAPING=[<0:1>]]`: Runs the resonance
-  test in all configured probe points for the requested axis (X or Y)
+  test in all configured probe points for the requested <axis>
   and measures the acceleration using the accelerometer chips configured
-  for the respective axis. If `INPUT_SHAPING=0` or not set (default),
+  for the respective axis. <axis> can either be X or Y, or specify an
+  arbitrary direction as `AXIS=dx,dy`, where dx and dy are floating point
+  numbers defining a direction vector (e.g. `AXIS=X`, `AXIS=Y`, or
+  `AXIS=1,-1` to define a diagonal direction). Note that `AXIS=dx,dy` and
+  `AXIS=-dx,-dy` is equivalent. If `INPUT_SHAPING=0` or not set (default),
   disables input shaping for the resonance testing, because it is not valid
   to run the resonance testing with the input shaper enabled.
   `OUTPUT` parameter is a comma-separated list of which outputs will be
@@ -798,3 +855,54 @@ is enabled (also see the
   defaults to the current time in "YYYYMMDD_HHMMSS" format. Note that
   the suggested input shaper parameters can be persisted in the config
   by issuing `SAVE_CONFIG` command.
+
+### Palette 2 Commands
+
+The following command is available when the
+[palette2 config section](Config_Reference.md#palette2)
+is enabled:
+- `PALETTE_CONNECT`: This command initializes the connection with
+  the Palette 2.
+- `PALETTE_DISCONNECT`: This command disconnects from the Palette 2.
+- `PALETTE_CLEAR`: This command instructs the Palette 2 to clear all of the
+  input and output paths of filament.
+- `PALETTE_CUT`: This command instructs the Palette 2 to cut the filament
+  currently loaded in the splice core.
+- `PALETTE_SMART_LOAD`: This command start the smart load sequence on the
+  Palette 2. Filament is loaded automatically by extruding it the distance
+  calibrated on the device for the printer, and instructs the Palette 2
+  once the loading has been completed. This command is the same as pressing
+  **Smart Load** directly on the Palette 2 screen after the filament load
+  is complete.
+
+Palette prints work by embedding special OCodes (Omega Codes)
+in the GCode file:
+- `O1`...`O32`: These codes are read from the GCode stream and processed
+  by this module and passed to the Palette 2 device.
+
+### Filament Width Sensor Commands
+
+The following command is available when the
+[tsl1401cl filament width sensor config section](Config_Reference.md#tsl1401cl_filament_width_sensor)
+or [hall filament width sensor config section](Config_Reference.md#hall_filament_width_sensor)
+is enabled (also see [TSLl401CL Filament Width Sensor](TSL1401CL_Filament_Width_Sensor.md)
+and [Hall Filament Width Sensor](Hall_Filament_Width_Sensor.md)):
+
+- `QUERY_FILAMENT_WIDTH` - Return the current measured filament width
+- `RESET_FILAMENT_WIDTH_SENSOR` - Clear all sensor readings. Helpful after
+  filament change
+- `DISABLE_FILAMENT_WIDTH_SENSOR` - Turn off the filament width sensor and
+  stop using it for flow control
+- `ENABLE_FILAMENT_WIDTH_SENSOR` - Turn on the filament width sensor and
+  start using it for flow control
+
+### Hall Filament Width Sensor Commands
+
+The following command is available when the
+[hall filament width sensor config section](Config_Reference.md#hall_filament_width_sensor)
+is enabled:
+
+- `QUERY_RAW_FILAMENT_WIDTH` - Return the current ADC channel readings and
+  RAW sensor value for calibration points
+- `ENABLE_FILAMENT_WIDTH_LOG` - Turn on diameter logging
+- `DISABLE_FILAMENT_WIDTH_LOG` - Turn off diameter logging
