@@ -1871,7 +1871,7 @@ printer kinematics.
 #   MANUAL_STEPPER movement commands.
 ```
 
-## Mixingextruder
+### [mixingextruder]
 
 A mixing printhead which has <n>in-1out mixing nozzle. When specified
 16 virtual mixingextruders are created ("mixingextruder",

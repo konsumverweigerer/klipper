@@ -279,7 +279,7 @@ class PrinterExtruder:
                 gcmd.respond_info("not changing temperature of current heater")
                 return
         else:
-            extruder = self.printer.lookup_object('toolhead').get_extruder()
+            extruder = current_extruder
         pheaters = self.printer.lookup_object('heaters')
         pheaters.set_temperature(extruder.get_heater(), temp, wait)
     def cmd_M109(self, gcmd):
