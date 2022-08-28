@@ -3,7 +3,7 @@
 # Copyright (C) 2017-2019  Kevin O'Connor <kevin@koconnor.net>
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
-import math, logging, collections
+import math, logging, collections, random
 import mathutil
 from . import probe
 
@@ -83,11 +83,14 @@ class DeltaCalibrate:
         # Calculate default probing points
         radius = config.getfloat('radius', above=0.)
         points = [(0., 0.)]
-        scatter = [.95, .90, .85, .70, .75, .80]
-        for i in range(6):
-            r = math.radians(90. + 60. * i)
-            dist = radius * scatter[i]
+        turns = 6
+        scatter_steps = 12
+        scatter = [(.99 - (.15 * i)) for i in (int(x / scatter_steps) for x in range(scatter_steps * turns))]
+        for i, s in enumerate(scatter):
+            r = math.radians(90. + (turns * 360. * i / len(scatter)))
+            dist = radius * s
             points.append((math.cos(r) * dist, math.sin(r) * dist))
+        random.shuffle(points)
         self.probe_helper = probe.ProbePointsHelper(
             config, self.probe_finalize, default_points=points)
         self.probe_helper.minimum_points(3)
@@ -221,6 +224,7 @@ class DeltaCalibrate:
     cmd_DELTA_CALIBRATE_help = "Delta calibration script"
     def cmd_DELTA_CALIBRATE(self, gcmd):
         self.probe_helper.start_probe(gcmd)
+        logging.info("Probing results: {}".format(self.probe_helper.results))
     def add_manual_height(self, height):
         # Determine current location of toolhead
         toolhead = self.printer.lookup_object('toolhead')
