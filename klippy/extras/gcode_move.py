@@ -247,7 +247,8 @@ class GCodeMove:
         if toolhead is None:
             raise gcmd.error("Printer not ready")
         kin = toolhead.get_kinematics()
-        steppers = kin.get_steppers()
+        steppers = list(kin.get_steppers())
+        steppers.append(toolhead.get_extruder().get_stepper())
         mcu_pos = " ".join(["%s:%d" % (s.get_name(), s.get_mcu_position())
                             for s in steppers])
         cinfo = [(s.get_name(), s.get_commanded_position()) for s in steppers]

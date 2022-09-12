@@ -215,6 +215,8 @@ class PrinterExtruder:
         return sts
     def get_name(self):
         return self.name
+    def get_stepper(self):
+        return self.extruder_stepper.stepper
     def get_heater(self):
         return self.heater
     def get_trapq(self):
