@@ -263,15 +263,15 @@ class GCodeMove:
                              for a, v in zip("XYZE", self.base_position)])
         homing_pos = " ".join(["%s:%.6f"  % (a, v)
                                for a, v in zip("XYZ", self.homing_position)])
-        gcmd.respond_info("mcu: %s\n"
-                          "stepper: %s\n"
-                          "kinematic: %s\n"
-                          "toolhead: %s\n"
-                          "gcode: %s\n"
-                          "gcode base: %s\n"
-                          "gcode homing: %s"
-                          % (mcu_pos, stepper_pos, kin_pos, toolhead_pos,
-                             gcode_pos, base_pos, homing_pos))
+        gcmd.respond_info("mcu: %s" % (mcu_pos)) #\n"
+#                          "stepper: %s\n"
+#                          "kinematic: %s\n"
+#                          "toolhead: %s\n"
+#                          "gcode: %s\n"
+#                          "gcode base: %s\n"
+#                          "gcode homing: %s"
+#                          % (mcu_pos, stepper_pos, kin_pos, toolhead_pos,
+#                             gcode_pos, base_pos, homing_pos))
 
 def load_config(config):
     return GCodeMove(config)

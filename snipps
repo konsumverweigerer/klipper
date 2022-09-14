@@ -1,0 +1,4 @@
+klipper$ virt^Clenv -p python2 klippy-env
+klipper$ ./klippy-env/bin/pip install -r klipper/scripts/klippy-re^Cirements.txt 
+klipper$ bin/python ../klipper/scripts/test_klippy.py -v -t /tmp/ -d ../dict/ ../klipper/test/klippy/extruders.test ^C
+

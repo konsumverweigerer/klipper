@@ -9,8 +9,9 @@ import stepper, chelper
 class ExtruderStepper:
     def __init__(self, config):
         self.printer = config.get_printer()
-        self.name = config.get_name().split()[-1]
+        self.name = self.extruder_name =config.get_name().split()[-1]
         self.pressure_advance = self.pressure_advance_smooth_time = 0.
+        self.factor = 1.
         # Setup stepper
         self.stepper = stepper.PrinterStepper(config)
         ffi_main, ffi_lib = chelper.get_ffi()
@@ -31,6 +32,9 @@ class ExtruderStepper:
         gcode.register_mux_command("SET_EXTRUDER_ROTATION_DISTANCE", "EXTRUDER",
                                    self.name, self.cmd_SET_E_ROTATION_DISTANCE,
                                    desc=self.cmd_SET_E_ROTATION_DISTANCE_help)
+        gcode.register_mux_command("SET_EXTRUDER_FACTOR", "EXTRUDER",
+                                   self.name, self.cmd_SET_E_FACTOR,
+                                   desc=self.cmd_SET_E_FACTOR_help)
         gcode.register_mux_command("SYNC_EXTRUDER_MOTION", "EXTRUDER",
                                    self.name, self.cmd_SYNC_EXTRUDER_MOTION,
                                    desc=self.cmd_SYNC_EXTRUDER_MOTION_help)
@@ -61,6 +65,7 @@ class ExtruderStepper:
                                              % (extruder_name,))
         self.stepper.set_position([extruder.last_position, 0., 0.])
         self.stepper.set_trapq(extruder.get_trapq())
+        self.extruder_name = extruder_name
     def _set_pressure_advance(self, pressure_advance, smooth_time):
         old_smooth_time = self.pressure_advance_smooth_time
         if not self.pressure_advance:
@@ -97,6 +102,28 @@ class ExtruderStepper:
                % (pressure_advance, smooth_time))
         self.printer.set_rollover_info(self.name, "%s: %s" % (self.name, msg))
         gcmd.respond_info(msg, log=False)
+    cmd_SET_E_FACTOR_help = "Set extruder extrusion factor"
+    def cmd_SET_E_FACTOR(self, gcmd):
+        factor = gcmd.get_float('FACTOR', None)
+        if factor is not None:
+            if not factor or factor < 0. or factor > 1.:
+                raise gcmd.error("Factor can not be zero")
+            if factor < 0.1 and self.factor > 0.1:
+                # disable stepper
+                pass
+            else:
+                if self.factor < 0.1:
+                    # enable stepper
+                    pass
+                rotation_dist, spr = self.stepper.get_rotation_distance()
+                toolhead = self.printer.lookup_object('toolhead')
+                toolhead.flush_step_generation()
+                self.stepper.set_rotation_distance(rotation_dist/factor)
+            self.factor = factor
+        else:
+            factor = self.factor
+        gcmd.respond_info("Extruder '%s' factor set to %0.6f"
+                          % (self.name, factor))
     cmd_SET_E_ROTATION_DISTANCE_help = "Set extruder rotation distance"
     def cmd_SET_E_ROTATION_DISTANCE(self, gcmd):
         rotation_dist = gcmd.get_float('DISTANCE', None)
@@ -110,7 +137,7 @@ class ExtruderStepper:
                 rotation_dist = -rotation_dist
             toolhead = self.printer.lookup_object('toolhead')
             toolhead.flush_step_generation()
-            self.stepper.set_rotation_distance(rotation_dist)
+            self.stepper.set_rotation_distance(rotation_dist/self.factor)
             self.stepper.set_dir_inverted(next_invert_dir)
         else:
             rotation_dist, spr = self.stepper.get_rotation_distance()
