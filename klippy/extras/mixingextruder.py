@@ -28,11 +28,6 @@ def idx_to_extruder(idx):
     return "mixingextruder%d" % (idx) if idx else "mixingextruder"
 
 
-def find_mixing_extruder(self, name, active=''):
-    idx = extruder_to_idx(name, lambda: active)
-    return idx_to_extruder(0 if idx < 0 else idx)
-
-
 class MixingExtruder:
     def __init__(self, config, idx, parent=None):
         self.printer = config.get_printer()
@@ -175,8 +170,6 @@ class MixingExtruder:
                                       for m in self.mixing),
                       current=",".join("%0.1f%%" % (m * 100.)
                                        for m in self.current_mixing),
-                      positions=",".join("%0.2fmm" % (p)
-                                         for p in self.positions),
                       ticks=",".join("%0.2f" % (
                                      extruder.stepper.get_mcu_position())
                                      for extruder in self.extruders),
@@ -193,9 +186,6 @@ class MixingExtruder:
                         for i in gradient[1]),
                     method=self.gradient_method,
                     enabled=str(self.gradient_enabled)).items())})
-        active = self._active_extruder()
-        status['find_mixing_extruder'] = \
-            lambda name: find_mixing_extruder(name, active)
         return status
 
     def get_name(self):
@@ -205,10 +195,6 @@ class MixingExtruder:
         return self.extruders[0].get_heater()
 
     def stats(self, eventtime):
-        if self.name == 'mixingextruder':
-            return False, self.name + ": positions=%s mixing=%s" % (
-                ",".join("%0.2f" % (m) for m in self.positions),
-                ",".join("%0.2f" % (m) for m in self.current_mixing))
         return False, self.name + ": mixing=%s" % (
             ",".join("%0.2f" % (m) for m in self.current_mixing))
 
