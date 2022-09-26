@@ -33,19 +33,19 @@ class MixingExtruder:
         self.printer = config.get_printer()
         self.activated = False
         self.name = idx_to_extruder(idx)
-        self.extruder_names = [e.strip()
+        self.stepper_names = [e.strip()
                                for e in
-                               config.get('extruders', '').split(",")
+                               config.get('steppers', '').split(",")
                                if len(e)]
-        if not len(self.extruder_names):
+        if not len(self.stepper_names):
             raise self.printer.config_error(
-                "No extruders configured for mixing")
-        self.extruders = parent.extruders if parent else []
+                "No steppers configured for mixing")
+        self.steppers = parent.steppers if parent else []
         self.mixing_extruders = parent.mixing_extruders if parent else {}
         self.mixing_extruders[idx] = self
-        self.mixing = self._init_mixings(idx, len(self.extruder_names))
+        self.mixing = self._init_mixings(idx, len(self.stepper_names))
         # ratios are used in SAVE_MIXING_EXTRUDERS
-        self.ratios = [1 if p == 0 else 0 for p in range(len(self.extruder_names))]
+        self.ratios = [1 if p == 0 else 0 for p in range(len(self.stepper_names))]
         self.enabled = False
         self.gradient_enabled = False
         # assumed to be sorted list of ((start, middle, end), (ref1, ref2))
@@ -55,8 +55,8 @@ class MixingExtruder:
                                             self._handle_connect)
         self.printer.register_event_handler('toolhead:move',
                                             self._handle_move)
-        logging.info("MixingExtruder %d extruders=%s", idx,
-                     ",".join(self.extruder_names),
+        logging.info("MixingExtruder %d steppers=%s mixing %s", idx,
+                     ",".join(self.stepper_names),
                      ",".join("%.1f" % (x) for x in self.mixing))
         # Register commands
         gcode = self.printer.lookup_object('gcode')
@@ -83,31 +83,31 @@ class MixingExtruder:
                                    self.name, self.cmd_MIXING_STATUS,
                                    desc=self.cmd_MIXING_STATUS_help)
 
-    def _init_mixings(self, idx, extruders):
+    def _init_mixings(self, idx, steppers_count):
         if idx == 0:
-            return [1. / extruders for p in range(extruders)]
+            return [1. / steppers_count for p in range(steppers_count)]
         idx = idx - 1
-        if idx < extruders:
-            return [1. if p == idx else 0. for p in range(extruders)]
-        idx = idx - extruders
-        if idx < extruders:
-            return [0. if p == idx else 1. / (extruders - 1)
-                    for p in range(extruders)]
-        idx = idx - extruders
-        if extruders == 3:
-            if idx < 2 * extruders:
+        if idx < steppers_count:
+            return [1. if p == idx else 0. for p in range(steppers_count)]
+        idx = idx - steppers_count
+        if idx < steppers_count:
+            return [0. if p == idx else 1. / (steppers_count - 1)
+                    for p in range(steppers_count)]
+        idx = idx - steppers_count
+        if steppers_count == 3:
+            if idx < 2 * steppers_count:
                 return [[0. if p == x else (1 + (((p - x) % 3 + y) % 2)) / 3.
-                         for p in range(extruders)]
-                        for x in range(extruders) for y in (0, 1)][idx]
-            idx = idx - 2 * extruders
-        elif extruders > 3:
-            if idx < (extruders * (extruders - 1) / 2):
-                return [[0. if p == x or p == y else 1. / (extruders - 2)
-                         for p in range(extruders)]
-                        for x in range(extruders)
-                        for y in range(x + 1, extruders)][idx]
-            idx = idx - (extruders * (extruders - 1) / 2)
-        return [1. / extruders for p in range(extruders)]
+                         for p in range(steppers_count)]
+                        for x in range(steppers_count) for y in (0, 1)][idx]
+            idx = idx - 2 * steppers_count
+        elif steppers_count > 3:
+            if idx < (steppers_count * (steppers_count - 1) / 2):
+                return [[0. if p == x or p == y else 1. / (steppers_count - 2)
+                         for p in range(steppers_count)]
+                        for x in range(steppers_count)
+                        for y in range(x + 1, steppers_count)][idx]
+            idx = idx - (steppers_count * (steppers_count - 1) / 2)
+        return [1. / steppers_count for p in range(steppers_count)]
 
     def _handle_connect(self):
         if self.activated:
@@ -116,12 +116,17 @@ class MixingExtruder:
         if self.mixing_extruders[0] != self:
             return
         try:
-            self.extruders.extend(self.printer.lookup_object(extruder)
-                                  for extruder in self.extruder_names)
+            for name in self.stepper_names:
+                try:
+                    stepper = self.printer.lookup_object(name)
+                except:
+                    stepper = self.printer.lookup_object("extruder_stepper_" + name)
+                self.steppers.append(stepper)
         except Exception as e:
-            self.extruders.clear()
-            logging.error("no extruders found: %s" %
-                          (", ".join(self.extruder_names)), e)
+            while len(self.steppers) > 0:
+                self.steppers.pop()
+            logging.error("no steppers found: %s: %s",
+                          ", ".join(self.stepper_names), e)
 
     def _handle_move(self):
         if self.enabled and self.gradient_enabled:
@@ -171,13 +176,13 @@ class MixingExtruder:
     def get_status(self, eventtime):
         status = dict(mixing=",".join("%0.1f%%" % (m * 100.)
                                       for m in self.mixing),
-                      ticks=",".join("%0.2f" % (
-                                     extruder.stepper.get_mcu_position())
-                                     for extruder in self.extruders),
-                      extruders=",".join(extruder.name
-                                         for extruder in self.extruders))
+                      mixing_ticks=",".join("%0.2f" % (
+                                            stepper.stepper.get_mcu_position())
+                                            for stepper in self.steppers),
+                      mixing_extruders=",".join(stepper.name
+                                                for stepper in self.steppers))
         for i, gradient in enumerate(self.gradients):
-            status.update({"gradient%d" % (i): ",".join(
+            status.update({"mixing_gradient%d" % (i): ",".join(
                 "%s:%s" % (k, v)
                 for k, v in dict(
                     heights="%.1f-(%.1f)-%.1f" % gradient[0],
@@ -193,33 +198,29 @@ class MixingExtruder:
         return self.name
 
     def get_heater(self):
-        return self.extruders[0].get_heater()
-
-    def stats(self, eventtime):
-        return False, self.name + ": mixing=%s" % (
-            ",".join("%0.2f" % (m) for m in self.mixing))
+        return self.stepper[0].extruder.get_heater()
 
     def _apply_mixing(self, position=None):
         mix = self.mixing
         if self.gradient_enabled and position:
             mix = self._get_gradient(position)
-        for i, extruder in enumerate(self.extruders):
-            extruder.extruder_stepper.set_extrusion_factor(mix[i])
+        for i, stepper in enumerate(self.stepper):
+            stepper.set_extrusion_factor(mix[i])
 
     cmd_SET_MIXING_EXTRUDER_help = "Set scale on motor/extruder"
 
     def cmd_SET_MIXING_EXTRUDER(self, gcmd):
-        extruder = gcmd.get('STEPPER')
+        name = gcmd.get('STEPPER')
         scale = gcmd.get_float('SCALE', minval=0.)
-        if extruder not in self.extruder_names:
+        if name not in self.stepper_names:
             try:
-                index = int(extruder)
-                if not 0 <= index < len(self.extruder_names):
+                index = int(name)
+                if not 0 <= index < len(self.stepper_names):
                     raise Exception("Invalid index")
             except Exception as e:
-                raise gcmd.error("Invalid extruder/motor: %s" % (e.message))
+                raise gcmd.error("Invalid stepper/motor: %s" % (e.message))
         else:
-            index = self.extruder_names.index(extruder)
+            index = self.stepper_names.index(name)
         self.ratios[index] = scale
 
     cmd_SAVE_MIXING_EXTRUDERS_help = "Save the scales on motors"

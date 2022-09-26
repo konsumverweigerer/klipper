@@ -11,7 +11,7 @@ EXTRUSION_FACTOR_THRESHOLD=0.01
 class ExtruderStepper:
     def __init__(self, config):
         self.printer = config.get_printer()
-        self.name = self.extruder_name =config.get_name().split()[-1]
+        self.name = self.extruder_name = config.get_name().split()[-1]
         self.pressure_advance = self.pressure_advance_smooth_time = 0.
         self.factor = 1.
         # Setup stepper
@@ -28,6 +28,9 @@ class ExtruderStepper:
             gcode.register_mux_command("SET_PRESSURE_ADVANCE", "EXTRUDER", None,
                                        self.cmd_default_SET_PRESSURE_ADVANCE,
                                        desc=self.cmd_SET_PRESSURE_ADVANCE_help)
+        else:
+            self.printer.add_object("extruder_stepper_" + self.name, self)
+
         gcode.register_mux_command("SET_PRESSURE_ADVANCE", "EXTRUDER",
                                    self.name, self.cmd_SET_PRESSURE_ADVANCE,
                                    desc=self.cmd_SET_PRESSURE_ADVANCE_help)
@@ -381,4 +384,5 @@ def add_printer_objects(config):
         if not config.has_section(section):
             break
         pe = PrinterExtruder(config.getsection(section), i)
+        logging.info("Adding extruder '%s'", section)
         printer.add_object(section, pe)

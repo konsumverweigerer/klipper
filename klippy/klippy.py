@@ -128,6 +128,7 @@ class Printer:
                 return default
             raise self.config_error("Unable to load module '%s'" % (section,))
         self.objects[section] = init_func(config.getsection(section))
+        logging.debug("Adding section '%s'", section)
         return self.objects[section]
     def _read_config(self):
         self.objects['configfile'] = pconfig = configfile.PrinterConfig(self)
