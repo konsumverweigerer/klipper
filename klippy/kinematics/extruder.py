@@ -62,6 +62,7 @@ class ExtruderStepper:
         toolhead = self.printer.lookup_object('toolhead')
         toolhead.flush_step_generation()
         if not extruder_name:
+            self.extruder_name = None
             self.stepper.set_trapq(None)
             return
         extruder = self.printer.lookup_object(extruder_name, None)

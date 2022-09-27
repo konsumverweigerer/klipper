@@ -118,7 +118,7 @@ class MixingExtruder:
         try:
             for name in self.stepper_names:
                 try:
-                    stepper = self.printer.lookup_object(name)
+                    stepper = self.printer.lookup_object(name).extruder_stepper
                 except:
                     stepper = self.printer.lookup_object("extruder_stepper_" + name)
                 self.steppers.append(stepper)
@@ -198,13 +198,16 @@ class MixingExtruder:
         return self.name
 
     def get_heater(self):
-        return self.stepper[0].extruder.get_heater()
+        return self.steppers[0].extruder.get_heater()
 
     def _apply_mixing(self, position=None):
         mix = self.mixing
         if self.gradient_enabled and position:
             mix = self._get_gradient(position)
-        for i, stepper in enumerate(self.stepper):
+        extruder_name = self.steppers[0].extruder_name
+        for i, stepper in enumerate(self.steppers):
+            if extruder_name != stepper.extruder_name:
+                stepper.sync_to_extruder(extruder_name)
             stepper.set_extrusion_factor(mix[i])
 
     cmd_SET_MIXING_EXTRUDER_help = "Set scale on motor/extruder"
