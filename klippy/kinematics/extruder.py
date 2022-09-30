@@ -74,7 +74,7 @@ class ExtruderStepper:
         self.extruder_name = extruder_name
     def set_extrusion_factor(self, factor):
         rotation_dist, spr = self.stepper.get_rotation_distance()
-        logging.debug("Got rotation dist %1.2f", rotation_dist)
+        logging.debug("Got rotation dist %1.2f, factor %1.2f <- %1.2f", rotation_dist, factor, self.factor)
         if factor < EXTRUSION_FACTOR_THRESHOLD <= self.factor:
             rotation_dist = rotation_dist*self.factor
             if self.extruder_name:
@@ -95,9 +95,10 @@ class ExtruderStepper:
                 self.stepper.set_position([extruder.last_position, 0., 0.])
                 self.stepper.set_trapq(extruder.get_trapq())
                 self.stepper.set_rotation_distance(rotation_dist/factor)
-            else:
+            elif EXTRUSION_FACTOR_THRESHOLD <= factor:
                 rotation_dist = rotation_dist*self.factor
                 self.stepper.set_rotation_distance(rotation_dist/factor)
+        self.factor = factor
         logging.debug("set extrusion factor to %1.2f (using rotation dist %1.2f)",
                         factor, rotation_dist)
     def _set_pressure_advance(self, pressure_advance, smooth_time):
@@ -143,7 +144,6 @@ class ExtruderStepper:
             if factor < 0. or factor > 1.:
                 raise gcmd.error("Factor out of range")
             self.set_extrusion_factor(factor)
-            self.factor = factor
         else:
             factor = self.factor
         gcmd.respond_info("Extruder '%s' factor set to %0.6f"
