@@ -6,6 +6,8 @@
 import math
 import logging
 
+EXTRUSION_FACTOR_THRESHOLD=0.01
+
 
 def extruder_to_idx(name, active=None):
     name = name.lower()
@@ -26,6 +28,13 @@ def extruder_to_idx(name, active=None):
 
 def idx_to_extruder(idx):
     return "mixingextruder%d" % (idx) if idx else "mixingextruder"
+
+
+def normalize_mixing(mixing):
+    normalized = tuple(0 if m < EXTRUSION_FACTOR_THRESHOLD else m
+                       for m in mixing)
+    s = sum(normalized)
+    return tuple(m / s for m in normalized)
 
 
 class MixingExtruder:
@@ -128,8 +137,8 @@ class MixingExtruder:
                 self.steppers.pop()
             logging.error("no steppers found: %s: %s",
                           ", ".join(self.stepper_names), e)
-        self.rotation_distances = [stepper.stepper.get_rotation_distance()[0]
-                                   for stepper in self.steppers]
+        self.rotation_distances.extend(stepper.stepper.get_rotation_distance()[0]
+                                   for stepper in self.steppers)
     def _handle_move(self):
         if self.enabled and self.gradient_enabled:
             toolhead = self.printer.lookup_object('toolhead')
@@ -197,15 +206,23 @@ class MixingExtruder:
         return self.name
     def _init_mixing(self):
         for i, stepper in enumerate(self.steppers):
-            if self.extruder_name != stepper.extruder_name:
-                stepper.sync_to_extruder(self.extruder_name)
+            stepper.sync_to_extruder(self.extruder_name)
     def _apply_mixing(self, position=None):
-        self.active_mixing = self.mixing
-        if self.gradient_enabled and position:
-            self.active_mixing = self._get_gradient(position)
+        self.active_mixing = normalize_mixing(
+            self._get_gradient(position) 
+            if self.gradient_enabled and position
+            else self.mixing)
         for i, stepper in enumerate(self.steppers):
+            # should be the same as
+            # if self.active_mixing[i] > 0 and stepper.stepper.get_trapq():
+            #   stepper.set_rotation_distance(self.rotation_distances[i] / self.active_mixing[i])
+            # elif self.active_mixing[i] > 0 and not stepper.stepper.get_trapq():
+            #   stepper.sync_to_extruder(self.extruder_name)
+            #   stepper.set_rotation_distance(self.rotation_distances[i] / self.active_mixing[i])
+            # elif self.active_mixing[i] == 0 and stepper.stepper.get_trapq():
+            #   stepper.sync_to_extruder(None)
             stepper.set_extrusion_factor(self.active_mixing[i])
-    cmd_SET_MIXING_EXTRUDER_help = "Set scale on motor/extruder"
+    cmd_SET_MIXING_EXTRUDER_help = "Set scale on stepper"
     def cmd_SET_MIXING_EXTRUDER(self, gcmd):
         name = gcmd.get('STEPPER')
         scale = gcmd.get_float('SCALE', minval=0.)
@@ -219,7 +236,7 @@ class MixingExtruder:
         else:
             index = self.stepper_names.index(name)
         self.ratios[index] = scale
-    cmd_SAVE_MIXING_EXTRUDERS_help = "Save the scales on motors"
+    cmd_SAVE_MIXING_EXTRUDERS_help = "Save the scales on steppers"
     def cmd_SAVE_MIXING_EXTRUDERS(self, gcmd):
         mixingextruder = self
         extruder = gcmd.get('MIXING_EXTRUDER', None)
@@ -280,7 +297,7 @@ class MixingExtruder:
     def cmd_RESET_MIXING_GRADIENT(self, gcmd):
         self.gradient_enabled, self.gradients, self.gradient_method = \
             False, [], 'linear'
-    cmd_ACTIVATE_EXTRUDER_help = "Change the active extruder"
+    cmd_ACTIVATE_EXTRUDER_help = "Change the active mixingextruder"
     def cmd_ACTIVATE_EXTRUDER(self, gcmd):
         if self.enabled:
             gcmd.respond_info("Extruder %s already active" % (self.name,))
@@ -295,7 +312,7 @@ class MixingExtruder:
             self._init_mixing()
         toolhead = self.printer.lookup_object('toolhead')
         self._apply_mixing(toolhead.get_position())
-    cmd_MIXING_STATUS_help = "Display the status of the given MixingExtruder"
+    cmd_MIXING_STATUS_help = "Display the status of the given mixingextruder"
     def cmd_MIXING_STATUS(self, gcmd):
         eventtime = self.printer.get_reactor().monotonic()
         status = self.get_status(eventtime)
