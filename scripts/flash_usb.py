@@ -293,7 +293,7 @@ def flash_stm32f1(options, binfile):
         if options.start == 0x8000800:
             flash_hidflash(options.device, binfile, options.sudo)
         elif options.start == 0x8000000:
-            flash_stm32flash(options.device, binfile, ["-b", "9600"], options.sudo)
+            flash_stm32flash(options.device, binfile, ["-b", "115200"], options.sudo)
         else:
             flash_dfuutil(options.device, binfile, ["-R", "-a", "2"],
                           options.sudo)
