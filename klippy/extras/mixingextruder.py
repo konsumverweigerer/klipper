@@ -34,15 +34,17 @@ class MixingExtruder:
         self.activated = False
         self.name = idx_to_extruder(idx)
         self.stepper_names = [e.strip()
-                               for e in
-                               config.get('steppers', '').split(",")
+                               for e in config.get('steppers', '').split(",")
                                if len(e)]
         if not len(self.stepper_names):
             raise self.printer.config_error(
                 "No steppers configured for mixing")
         self.steppers = parent.steppers if parent else []
+        self.rotation_distances = parent.rotation_distances if parent else []
         self.mixing_extruders = parent.mixing_extruders if parent else {}
         self.mixing_extruders[idx] = self
+        self.extruder_name = (parent.extruder_name if parent 
+                              else config.get('extruder_name', self.stepper_names[0]))
         self.mixing = self.active_mixing = self._init_mixings(idx, len(self.stepper_names))
         # ratios are used in SAVE_MIXING_EXTRUDERS
         self.ratios = [1 if p == 0 else 0 for p in range(len(self.stepper_names))]
@@ -56,9 +58,9 @@ class MixingExtruder:
                                             self._handle_connect)
         self.printer.register_event_handler('toolhead:move',
                                             self._handle_move)
-        logging.info("MixingExtruder %d steppers=%s mixing %s", idx,
-                     ",".join(self.stepper_names),
-                     ",".join("%.1f" % (x) for x in self.mixing))
+        logging.debug("MixingExtruder %d steppers=%s mixing %s", idx,
+                      ",".join(self.stepper_names),
+                      ",".join("%.1f" % (x) for x in self.mixing))
         # Register commands
         gcode = self.printer.lookup_object('gcode')
         gcode.register_mux_command("ACTIVATE_EXTRUDER", "EXTRUDER",
@@ -83,7 +85,6 @@ class MixingExtruder:
         gcode.register_mux_command("MIXING_STATUS", "EXTRUDER",
                                    self.name, self.cmd_MIXING_STATUS,
                                    desc=self.cmd_MIXING_STATUS_help)
-
     def _init_mixings(self, idx, steppers_count):
         if idx == 0:
             return [1. / steppers_count for p in range(steppers_count)]
@@ -109,7 +110,6 @@ class MixingExtruder:
                         for y in range(x + 1, steppers_count)][idx]
             idx = idx - (steppers_count * (steppers_count - 1) / 2)
         return [1. / steppers_count for p in range(steppers_count)]
-
     def _handle_connect(self):
         if self.activated:
             return
@@ -128,12 +128,12 @@ class MixingExtruder:
                 self.steppers.pop()
             logging.error("no steppers found: %s: %s",
                           ", ".join(self.stepper_names), e)
-
+        self.rotation_distances = [stepper.stepper.get_rotation_distance()[0]
+                                   for stepper in self.steppers]
     def _handle_move(self):
         if self.enabled and self.gradient_enabled:
             toolhead = self.printer.lookup_object('toolhead')
             self._apply_mixing(toolhead.get_position())
-
     def _get_gradient(self, pos):
         default = self.mixing
         for heights, refs in self.gradients:
@@ -173,7 +173,6 @@ class MixingExtruder:
                               "/".join("%.1f" % x for x in mix)))
                 return mix
         return default
-
     def get_status(self, eventtime):
         status = dict(mixing=",".join("%0.1f%%" % (m * 100.)
                                       for m in self.active_mixing),
@@ -194,28 +193,19 @@ class MixingExtruder:
                     method=self.gradient_method,
                     enabled=str(self.gradient_enabled)).items())})
         return status
-
     def get_name(self):
         return self.name
-
-    def get_heater(self):
-        return self.steppers[0].extruder.get_heater()
-
     def _init_mixing(self):
-        extruder_name = self.steppers[0].extruder_name
         for i, stepper in enumerate(self.steppers):
-            if extruder_name != stepper.extruder_name:
-                stepper.sync_to_extruder(extruder_name)
-
+            if self.extruder_name != stepper.extruder_name:
+                stepper.sync_to_extruder(self.extruder_name)
     def _apply_mixing(self, position=None):
         self.active_mixing = self.mixing
         if self.gradient_enabled and position:
             self.active_mixing = self._get_gradient(position)
         for i, stepper in enumerate(self.steppers):
             stepper.set_extrusion_factor(self.active_mixing[i])
-
     cmd_SET_MIXING_EXTRUDER_help = "Set scale on motor/extruder"
-
     def cmd_SET_MIXING_EXTRUDER(self, gcmd):
         name = gcmd.get('STEPPER')
         scale = gcmd.get_float('SCALE', minval=0.)
@@ -229,9 +219,7 @@ class MixingExtruder:
         else:
             index = self.stepper_names.index(name)
         self.ratios[index] = scale
-
     cmd_SAVE_MIXING_EXTRUDERS_help = "Save the scales on motors"
-
     def cmd_SAVE_MIXING_EXTRUDERS(self, gcmd):
         mixingextruder = self
         extruder = gcmd.get('MIXING_EXTRUDER', None)
@@ -245,9 +233,7 @@ class MixingExtruder:
         for i, v in enumerate(self.ratios):
             mixingextruder.mixing[i] = v / s
             self.ratios[i] = 0.0
-
     cmd_SET_MIXING_GRADIENT_help = "Turn no/off grdient mixing"
-
     def cmd_SET_MIXING_GRADIENT(self, gcmd):
         method = gcmd.get('METHOD')
         if method in ["linear", "spherical"]:
@@ -260,16 +246,12 @@ class MixingExtruder:
             self.gradient_enabled = enable.lower() == 'true'
         if self.gradient_enabled:
             self._handle_move()
-
     cmd_ADD_MIXING_GRADIENT_help = "Add mixing gradient"
-
     def _active_extruder(self):
         toolhead = self.printer.lookup_object('toolhead')
         return toolhead.get_extruder().get_name().lower()
-
     def _to_idx(self, name):
         return extruder_to_idx(name, active=self._active_extruder)
-
     def cmd_ADD_MIXING_GRADIENT(self, gcmd):
         start_extruder = self._to_idx(gcmd.get('START'))
         end_extruder = self._to_idx(gcmd.get('END'))
@@ -294,20 +276,17 @@ class MixingExtruder:
              end_height),
             (start_extruder, end_extruder)))
         self.gradients.sort(key=lambda x: x[0][0])
-
     cmd_RESET_MIXING_GRADIENT_help = "Clear mixing gradient info"
-
     def cmd_RESET_MIXING_GRADIENT(self, gcmd):
         self.gradient_enabled, self.gradients, self.gradient_method = \
             False, [], 'linear'
-
     cmd_ACTIVATE_EXTRUDER_help = "Change the active extruder"
-
     def cmd_ACTIVATE_EXTRUDER(self, gcmd):
         if self.enabled:
             gcmd.respond_info("Extruder %s already active" % (self.name,))
             return
-        mixing_enabled = sum([extruder.enabled for extruder in self.mixing_extruders.values()])>0
+        mixing_enabled = sum([extruder.enabled 
+                              for extruder in self.mixing_extruders.values()]) > 0
         for extruder in self.mixing_extruders.values():
             extruder.enabled = (extruder == self)
         gcmd.respond_info("Activating extruder %s %d" % (self.name,
@@ -316,9 +295,7 @@ class MixingExtruder:
             self._init_mixing()
         toolhead = self.printer.lookup_object('toolhead')
         self._apply_mixing(toolhead.get_position())
-
     cmd_MIXING_STATUS_help = "Display the status of the given MixingExtruder"
-
     def cmd_MIXING_STATUS(self, gcmd):
         eventtime = self.printer.get_reactor().monotonic()
         status = self.get_status(eventtime)

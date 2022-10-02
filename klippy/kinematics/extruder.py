@@ -76,11 +76,18 @@ class ExtruderStepper:
         self.stepper.set_position([extruder.last_position, 0., 0.])
         self.stepper.set_trapq(extruder.get_trapq())
         self.extruder_name = extruder_name
+    def set_rotation_distance(self, rotation_dist):
+        toolhead = self.printer.lookup_object('toolhead')
+        toolhead.flush_step_generation()
+        self.stepper.set_rotation_distance(rotation_dist / self.factor)
+    def get_rotation_distance(self):
+        rotation_dist, spr = self.stepper.get_rotation_distance()
+        return rotation_dist * self.factor
     def set_extrusion_factor(self, factor):
         rotation_dist, spr = self.stepper.get_rotation_distance()
         logging.debug("Got rotation dist %1.2f, factor %1.2f <- %1.2f", rotation_dist, factor, self.factor)
         if factor < EXTRUSION_FACTOR_THRESHOLD <= self.factor:
-            rotation_dist = rotation_dist*self.factor
+            rotation_dist = rotation_dist * self.factor # unscaled rotation_dist
             if self.extruder_name:
                 logging.debug("disabling stepper due to too low factor %s", self.name)
                 toolhead = self.printer.lookup_object('toolhead')
@@ -91,17 +98,18 @@ class ExtruderStepper:
             toolhead = self.printer.lookup_object('toolhead')
             toolhead.flush_step_generation()
             if self.factor < EXTRUSION_FACTOR_THRESHOLD <= factor and self.extruder_name:
-                logging.debug("re-enabling low factor disbabled stepper %s", self.name)
+                logging.debug("re-enabling low factor disabled stepper %s", self.name)
                 extruder = self.printer.lookup_object(self.extruder_name, None)
                 if extruder is None or not isinstance(extruder, PrinterExtruder):
                     raise self.printer.command_error("'%s' is not a valid extruder."
                                                         % (self.extruder_name,))
                 self.stepper.set_position([extruder.last_position, 0., 0.])
                 self.stepper.set_trapq(extruder.get_trapq())
-                self.stepper.set_rotation_distance(rotation_dist/factor)
+                # was disabled hence no unscaling
+                self.stepper.set_rotation_distance(rotation_dist / factor)
             elif EXTRUSION_FACTOR_THRESHOLD <= factor:
-                rotation_dist = rotation_dist*self.factor
-                self.stepper.set_rotation_distance(rotation_dist/factor)
+                rotation_dist = rotation_dist * self.factor # unscaled rotation_dist
+                self.stepper.set_rotation_distance(rotation_dist / factor)
         self.factor = factor
         logging.debug("set extrusion factor to %1.2f (using rotation dist %1.2f)",
                         factor, rotation_dist)
@@ -163,13 +171,10 @@ class ExtruderStepper:
             if rotation_dist < 0.:
                 next_invert_dir = not orig_invert_dir
                 rotation_dist = -rotation_dist
-            toolhead = self.printer.lookup_object('toolhead')
-            toolhead.flush_step_generation()
-            self.stepper.set_rotation_distance(rotation_dist/self.factor)
+            self.set_rotation_distance(rotation_dist)
             self.stepper.set_dir_inverted(next_invert_dir)
         else:
-            rotation_dist, spr = self.stepper.get_rotation_distance()
-            rotation_dist = rotation_dist*self.factor
+            rotation_dist = self.get_rotation_distance()
         invert_dir, orig_invert_dir = self.stepper.get_dir_inverted()
         if invert_dir != orig_invert_dir:
             rotation_dist = -rotation_dist
@@ -184,10 +189,8 @@ class ExtruderStepper:
     def cmd_SET_E_STEP_DISTANCE(self, gcmd):
         step_dist = gcmd.get_float('DISTANCE', None, above=0.)
         if step_dist is not None:
-            toolhead = self.printer.lookup_object('toolhead')
-            toolhead.flush_step_generation()
             rd, steps_per_rotation = self.stepper.get_rotation_distance()
-            self.stepper.set_rotation_distance(step_dist * steps_per_rotation)
+            self.set_rotation_distance(step_dist * steps_per_rotation)
         else:
             step_dist = self.stepper.get_step_dist()
         gcmd.respond_info("Extruder '%s' step distance set to %0.6f"
