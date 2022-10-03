@@ -426,7 +426,7 @@ This command is deprecated and will be removed in the near future.
 #### SYNC_STEPPER_TO_EXTRUDER
 This command is deprecated and will be removed in the near future.
 
-### [mixingextruder]
+### [mixing_extruder]
 
 The following commands are available when a
 [mixingextruder config section](Config_Reference.md#mixingextruder) is

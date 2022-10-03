@@ -237,7 +237,7 @@ class MixingExtruder:
     cmd_SAVE_MIXING_EXTRUDERS_help = "Save the scales on steppers"
     def cmd_SAVE_MIXING_EXTRUDERS(self, gcmd):
         mixingextruder = self
-        extruder = gcmd.get('MIXING_EXTRUDER', None)
+        extruder = gcmd.get('EXTRUDER', None)
         if extruder:
             idx = self._to_idx(extruder)
             if idx >= 0:
@@ -321,9 +321,9 @@ class MixingExtruder:
 def load_config(config):
     mixingextruder = None
     for i in range(16):
-        pe = MixingExtruder(config.getsection('mixingextruder'),
+        pe = MixingExtruder(config.getsection('mixing_extruder'),
                             i, parent=mixingextruder)
         if i == 0:
             mixingextruder = pe
-    logging.info("Started mixingextruder")
+    logging.info("Added mixing extruders")
     return mixingextruder

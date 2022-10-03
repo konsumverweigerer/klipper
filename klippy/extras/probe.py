@@ -422,6 +422,7 @@ class ProbePointsHelper:
                              " probe's z_offset")
         probe.multi_probe_begin()
         while 1:
+            self.gcode.respond_info("Probing {}/{}".format(len(self.results), len(self.probe_points)))
             done = self._move_next()
             if done:
                 break
