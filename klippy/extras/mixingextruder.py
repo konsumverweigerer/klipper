@@ -213,15 +213,13 @@ class MixingExtruder:
             if self.gradient_enabled and position
             else self.mixing)
         for i, stepper in enumerate(self.steppers):
-            # should be the same as
-            # if self.active_mixing[i] > 0 and stepper.stepper.get_trapq():
-            #   stepper.set_rotation_distance(self.rotation_distances[i] / self.active_mixing[i])
-            # elif self.active_mixing[i] > 0 and not stepper.stepper.get_trapq():
-            #   stepper.sync_to_extruder(self.extruder_name)
-            #   stepper.set_rotation_distance(self.rotation_distances[i] / self.active_mixing[i])
-            # elif self.active_mixing[i] == 0 and stepper.stepper.get_trapq():
-            #   stepper.sync_to_extruder(None)
-            stepper.set_extrusion_factor(self.active_mixing[i])
+            if self.active_mixing[i] > 0 and stepper.stepper.get_trapq():
+              stepper.set_rotation_distance(self.rotation_distances[i] / self.active_mixing[i])
+            elif self.active_mixing[i] > 0 and not stepper.stepper.get_trapq():
+              stepper.sync_to_extruder(self.extruder_name)
+              stepper.set_rotation_distance(self.rotation_distances[i] / self.active_mixing[i])
+            elif self.active_mixing[i] == 0 and stepper.stepper.get_trapq():
+              stepper.sync_to_extruder(None)
     cmd_SET_MIXING_EXTRUDER_help = "Set scale on stepper"
     def cmd_SET_MIXING_EXTRUDER(self, gcmd):
         name = gcmd.get('STEPPER')
