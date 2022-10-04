@@ -212,6 +212,7 @@ class MixingExtruder:
             self._get_gradient(position) 
             if self.gradient_enabled and position
             else self.mixing)
+        logging.debug("applying mixing %s to %s"%(str(self.active_mixing), self.name))
         for i, stepper in enumerate(self.steppers):
             if self.active_mixing[i] > 0 and stepper.stepper.get_trapq():
               stepper.set_rotation_distance(self.rotation_distances[i] / self.active_mixing[i])
@@ -248,9 +249,10 @@ class MixingExtruder:
         for i, v in enumerate(self.ratios):
             mixingextruder.mixing[i] = v / s
             self.ratios[i] = 0.0
+        mixingextruder._apply_mixing()
     cmd_SET_MIXING_GRADIENT_help = "Turn no/off grdient mixing"
     def cmd_SET_MIXING_GRADIENT(self, gcmd):
-        method = gcmd.get('METHOD')
+        method = gcmd.get('METHOD', '')
         if method in ["linear", "spherical"]:
             self.gradient_method = method
         try:
