@@ -1182,6 +1182,33 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#mixing_extruder" class="md-nav__link">
+    [mixing_extruder]
+  </a>
+  
+    <nav class="md-nav" aria-label="[mixing_extruder]">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#set_mixing_extruder" class="md-nav__link">
+    SET_MIXING_EXTRUDER
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#set_mixing_extruder_gradient" class="md-nav__link">
+    SET_MIXING_EXTRUDER_GRADIENT
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#fan_generic" class="md-nav__link">
     [fan_generic]
   </a>
@@ -3245,6 +3272,33 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#mixing_extruder" class="md-nav__link">
+    [mixing_extruder]
+  </a>
+  
+    <nav class="md-nav" aria-label="[mixing_extruder]">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#set_mixing_extruder" class="md-nav__link">
+    SET_MIXING_EXTRUDER
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#set_mixing_extruder_gradient" class="md-nav__link">
+    SET_MIXING_EXTRUDER_GRADIENT
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#fan_generic" class="md-nav__link">
     [fan_generic]
   </a>
@@ -4724,6 +4778,39 @@ will be desynchronized from all extruder movement.</p>
 <p>This command is deprecated and will be removed in the near future.</p>
 <h4 id="sync_stepper_to_extruder">SYNC_STEPPER_TO_EXTRUDER<a class="headerlink" href="#sync_stepper_to_extruder" title="Permanent link">&para;</a></h4>
 <p>This command is deprecated and will be removed in the near future.</p>
+<h3 id="mixing_extruder">[mixing_extruder]<a class="headerlink" href="#mixing_extruder" title="Permanent link">&para;</a></h3>
+<p>The following commands are available when a
+<a href="Config_Reference.html#mixingextruder">mixingextruder config section</a> is
+enabled:</p>
+<h4 id="set_mixing_extruder">SET_MIXING_EXTRUDER<a class="headerlink" href="#set_mixing_extruder" title="Permanent link">&para;</a></h4>
+<p><code>SET_MIXING_EXTRUDER [FACTORS=&lt;factor1&gt;[:&lt;factor2&gt;[:&lt;factor3&gt;...]]]
+[ENABLE=[0|1]]</code>:
+This command activates the specified mixing extruder. Subsequent G1 commands
+use the mixing defined by the factors. FACTORS defines the mixing by providing
+a number of positive values. The number of values should correspond to the
+number of steppers defined in the configuration. The values are normalized
+internally to add up to 1 and the extrusion of the corresponding stepper is
+multiplied by that value. If ENABLED is omitted the current mixing state is
+not changed.
+If neither FACTORS nor ENABLE is provided the current mixing status is
+displayed.</p>
+<h4 id="set_mixing_extruder_gradient">SET_MIXING_EXTRUDER_GRADIENT<a class="headerlink" href="#set_mixing_extruder_gradient" title="Permanent link">&para;</a></h4>
+<p><code>SET_MIXING_EXTRUDER_GRADIENT [START_FACTORS=&lt;s1&gt;[,&lt;s2&gt;[,&lt;s3&gt;...]]
+END_FACTORS=&lt;e1&gt;[,&lt;e2&gt;[,&lt;e3&gt;...]] START_HEIGHT=&lt;start&gt; END_HEIGHT=&lt;end&gt;</code>]
+[ENABLE=[0|1|RESET]] [METHOD=[linear|spherical] [VECTOR=<x>,<y>,<z>]]`: When
+START_FACTORS, END_FACTORS, START_HEIGHT, END_HEIGHT is provided
+then an gradient configuration is added. The START_FACTORS define the mixing
+below and up to the START_HEIGHT. The END_FACTORS respectively the mixing
+from the END_HEIGHT onward. The mixing in between is linearly interpolated.
+When ENABLE is either 0 or 1 or METHOD is specified the mixing gradient is
+turned off or on and the gradient method (METHOD) which should be used is
+selected. All previously added gradients are used when enabled. The optional
+VECTOR configures a parameter depending on the METHOD: eg. for linear VECTOR
+defines the up direction and for spherical it defines the origin of the
+spheres.
+When ENABLE is RESET all configured gradients are removed and the gradient
+handling is disabled.
+When no parameter is provided the current mixing gradient status is displayed.</p>
 <h3 id="fan_generic">[fan_generic]<a class="headerlink" href="#fan_generic" title="Permanent link">&para;</a></h3>
 <p>The following command is available when a
 <a href="Config_Reference.html#fan_generic">fan_generic config section</a> is

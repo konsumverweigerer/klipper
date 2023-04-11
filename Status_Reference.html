@@ -943,6 +943,13 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#mixing_extruder" class="md-nav__link">
+    mixing_extruder
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#motion_report" class="md-nav__link">
     motion_report
   </a>
@@ -1711,6 +1718,13 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#mixing_extruder" class="md-nav__link">
+    mixing_extruder
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#motion_report" class="md-nav__link">
     motion_report
   </a>
@@ -2173,6 +2187,18 @@ understands it).</li>
   micro-controller architectures and with each code revision.</li>
 <li><code>last_stats.&lt;statistics_name&gt;</code>: Statistics information on the
   micro-controller connection.</li>
+</ul>
+<h2 id="mixing_extruder">mixing_extruder<a class="headerlink" href="#mixing_extruder" title="Permanent link">&para;</a></h2>
+<p>The following information is available in the <code>mixing_extruder</code> object
+(this object is automatically available if any stepper config section
+is defined):</p>
+<p>The following information is available in
+<a href="Config_Reference.html#mixing_extruder">mixing_extruder</a> objects:</p>
+<ul>
+<li><code>&lt;mixing&gt;</code>: The current mixing weights in percent for the configured
+  extruders separated by comma</li>
+<li><code>&lt;ticks&gt;</code>: A comma separated list of the current mcu position for the
+  configured extruders</li>
 </ul>
 <h2 id="motion_report">motion_report<a class="headerlink" href="#motion_report" title="Permanent link">&para;</a></h2>
 <p>The following information is available in the <code>motion_report</code> object
