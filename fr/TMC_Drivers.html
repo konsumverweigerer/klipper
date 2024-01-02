@@ -618,6 +618,20 @@
 
             
           
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="Axis_Twist_Compensation.html" class="md-nav__link">
+        Compensation de torsion de l'axe
+      </a>
+    </li>
+  
+
+            
+          
         </ul>
       </nav>
     </li>
@@ -1390,8 +1404,36 @@
   
   
     <li class="md-nav__item">
+      <a href="Bootloader_Entry.html" class="md-nav__link">
+        Entrée du bootloader
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
       <a href="CANBUS.html" class="md-nav__link">
         BUS CAN
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="CANBUS_Troubleshooting.html" class="md-nav__link">
+        Dépannage du CANBUS
       </a>
     </li>
   
@@ -1826,7 +1868,7 @@ homing_retract_dist: 0
 <p>Il peut également être utile que cette macro définisse le courant du pilote avant la prise d'origine et définisse un nouveau courant après que le chariot s'est éloigné.</p>
 <p>Un exemple de macro pourrait ressembler à :</p>
 <div class="highlight"><pre><span></span><code>[gcode_macro SENSORLESS_HOME_X]
-gcode:
+gcode :
     {% set HOME_CUR = 0.700 %}
     {% set driver_config = printer.configfile.settings[&#39;tmc2209 stepper_x&#39;] %}
     {% set RUN_CUR = driver_config.run_current %}
@@ -1836,7 +1878,7 @@ gcode:
     G4 P2000
     # mise à l&#39;origine
     G28 X0
-    # Déplacement 
+    # Déplacement
     G90
     G1 X5 F1200
     # Remise du courant d&#39;impression

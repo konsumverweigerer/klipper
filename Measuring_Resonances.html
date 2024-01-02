@@ -618,6 +618,20 @@
 
             
           
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="Axis_Twist_Compensation.html" class="md-nav__link">
+        Axis Twist Compensation
+      </a>
+    </li>
+  
+
+            
+          
         </ul>
       </nav>
     </li>
@@ -758,13 +772,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#using-raspberry-pi-pico_1" class="md-nav__link">
-    Using Raspberry Pi Pico
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -854,6 +861,13 @@
         
       </ul>
     </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configure-lis2dw-series" class="md-nav__link">
+    Configure LIS2DW series
+  </a>
   
 </li>
         
@@ -1443,8 +1457,36 @@
   
   
     <li class="md-nav__item">
+      <a href="Bootloader_Entry.html" class="md-nav__link">
+        Bootloader Entry
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
       <a href="CANBUS.html" class="md-nav__link">
         CANBUS
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="CANBUS_Troubleshooting.html" class="md-nav__link">
+        CANBUS Troubleshooting
       </a>
     </li>
   
@@ -1578,13 +1620,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#using-raspberry-pi-pico_1" class="md-nav__link">
-    Using Raspberry Pi Pico
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -1674,6 +1709,13 @@
         
       </ul>
     </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configure-lis2dw-series" class="md-nav__link">
+    Configure LIS2DW series
+  </a>
   
 </li>
         
@@ -1808,18 +1850,18 @@
 
 
 <h1 id="measuring-resonances">Measuring Resonances<a class="headerlink" href="#measuring-resonances" title="Permanent link">&para;</a></h1>
-<p>Klipper has built-in support for the ADXL345 and MPU-9250 compatible
+<p>Klipper has built-in support for the ADXL345, MPU-9250 and LIS2DW compatible
 accelerometers which can be used to measure resonance frequencies of the printer
 for different axes, and auto-tune <a href="Resonance_Compensation.html">input shapers</a> to
 compensate for resonances. Note that using accelerometers requires some
-soldering and crimping. The ADXL345 can be connected to the SPI interface of a
-Raspberry Pi or MCU board (it needs to be reasonably fast). The MPU family can
+soldering and crimping. The ADXL345/LIS2DW can be connected to the SPI interface
+of a Raspberry Pi or MCU board (it needs to be reasonably fast). The MPU family can
 be connected to the I2C interface of a Raspberry Pi directly, or to an I2C
 interface of an MCU board that supports 400kbit/s <em>fast mode</em> in Klipper.</p>
 <p>When sourcing accelerometers, be aware that there are a variety of different PCB
 board designs and different clones of them. If it is going to be connected to a
 5V printer MCU ensure it has a voltage regulator and level shifters.</p>
-<p>For ADXL345s, make sure that the board supports SPI mode (a small number of
+<p>For ADXL345s/LIS2DWs, make sure that the board supports SPI mode (a small number of
 boards appear to be hard-configured for I2C by pulling SDO to GND).</p>
 <p>For MPU-9250/MPU-9255/MPU-6515/MPU-6050/MPU-6500s there are also a variety of
 board designs and clones with different I2C pull-up resistors which will need
@@ -1857,15 +1899,19 @@ supplementing.</p>
 for signal integrity over a long distance. If you still experience signal
 integrity issues (SPI/I2C errors):</p>
 <ul>
-<li>Double check the wiring with a digital multimeter for:</li>
+<li>Double check the wiring with a digital multimeter for:<ul>
 <li>Correct connections when turned off (continuity)</li>
 <li>Correct power and ground voltages</li>
-<li>I2C only:</li>
+</ul>
+</li>
+<li>I2C only:<ul>
 <li>Check the SCL and SDA lines' resistances to 3.3V are in the range of 900
-      ohms to 1.8K</li>
+  ohms to 1.8K</li>
 <li>For full technical details consult <a href="https://www.pololu.com/file/0J435/UM10204.pdf">chapter 7 of the I2C-bus specification
-      and user manual UM10204</a>
-      for <em>fast-mode</em></li>
+  and user manual UM10204</a>
+  for <em>fast-mode</em></li>
+</ul>
+</li>
 <li>Shorten the cable</li>
 </ul>
 <p>Connect ethernet cable shielding only to the MCU board/Pi ground.</p>
@@ -1880,7 +1926,7 @@ SCLK+CS
 
 <p>Note that unlike a cable shield, GND must be connected at both ends.</p>
 <h4 id="adxl345">ADXL345<a class="headerlink" href="#adxl345" title="Permanent link">&para;</a></h4>
-<h6 id="direct-to-raspberry-pi">Direct to Raspberry Pi<a class="headerlink" href="#direct-to-raspberry-pi" title="Permanent link">&para;</a></h6>
+<h5 id="direct-to-raspberry-pi">Direct to Raspberry Pi<a class="headerlink" href="#direct-to-raspberry-pi" title="Permanent link">&para;</a></h5>
 <p><strong>Note: Many MCUs will work with an ADXL345 in SPI mode (e.g. Pi Pico), wiring
 and configuration will vary according to your specific board and available
 pins.</strong></p>
@@ -1930,59 +1976,7 @@ and <strong>will not work</strong>. The recommended connection scheme:</p>
 </table>
 <p>Fritzing wiring diagrams for some of the ADXL345 boards:</p>
 <p><img alt="ADXL345-Rpi" src="img/adxl345-fritzing.png" /></p>
-<h6 id="using-raspberry-pi-pico">Using Raspberry Pi Pico<a class="headerlink" href="#using-raspberry-pi-pico" title="Permanent link">&para;</a></h6>
-<p>You may connect the ADXL345 to your Raspberry Pi Pico and then connect the
-Pico to your Raspberry Pi via USB. This makes it easy to reuse the
-accelerometer on other Klipper devices, as you can connect via USB instead
-of GPIO. The Pico does not have much processing power, so make sure it is
-only running the accelerometer and not performing any other duties.</p>
-<p>In order to avoid damage to your RPi make sure to connect the ADXL345 to 3.3V
-only. Depending on the board's layout, a level shifter may be present, which
-makes 5V dangerous for your RPi.</p>
-<table>
-<thead>
-<tr>
-<th align="center">ADXL345 pin</th>
-<th align="center">Pico pin</th>
-<th align="center">Pico pin name</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td align="center">3V3 (or VCC)</td>
-<td align="center">36</td>
-<td align="center">3.3V DC power</td>
-</tr>
-<tr>
-<td align="center">GND</td>
-<td align="center">38</td>
-<td align="center">Ground</td>
-</tr>
-<tr>
-<td align="center">CS</td>
-<td align="center">2</td>
-<td align="center">GP1 (SPI0_CSn)</td>
-</tr>
-<tr>
-<td align="center">SDO</td>
-<td align="center">1</td>
-<td align="center">GP0 (SPI0_RX)</td>
-</tr>
-<tr>
-<td align="center">SDA</td>
-<td align="center">5</td>
-<td align="center">GP3 (SPI0_TX)</td>
-</tr>
-<tr>
-<td align="center">SCL</td>
-<td align="center">4</td>
-<td align="center">GP2 (SPI0_SCK)</td>
-</tr>
-</tbody>
-</table>
-<p>Wiring diagrams for some of the ADXL345 boards:</p>
-<p><img alt="ADXL345-Pico" src="img/adxl345-pico.png" /></p>
-<h6 id="using-raspberry-pi-pico_1">Using Raspberry Pi Pico<a class="headerlink" href="#using-raspberry-pi-pico_1" title="Permanent link">&para;</a></h6>
+<h5 id="using-raspberry-pi-pico">Using Raspberry Pi Pico<a class="headerlink" href="#using-raspberry-pi-pico" title="Permanent link">&para;</a></h5>
 <p>You may connect the ADXL345 to your Raspberry Pi Pico and then connect the
 Pico to your Raspberry Pi via USB. This makes it easy to reuse the
 accelerometer on other Klipper devices, as you can connect via USB instead
@@ -2098,7 +2092,7 @@ smaller parallel resistors.</p>
 <tbody>
 <tr>
 <td align="center">VCC</td>
-<td align="center">39</td>
+<td align="center">36</td>
 <td align="center">3v3</td>
 </tr>
 <tr>
@@ -2191,10 +2185,11 @@ sudo apt install python3-numpy python3-matplotlib libatlas-base-dev
 of time, up to 10-20 minutes. Be patient and wait for the completion of
 the installation. On some occasions, if the board has too little RAM
 the installation may fail and you will need to enable swap.</p>
-<p>Afterwards, check and follow the instructions in the
-<a href="RPi_microcontroller.html">RPi Microcontroller document</a> to setup the
-"linux mcu" on the Raspberry Pi.</p>
 <h4 id="configure-adxl345-with-rpi">Configure ADXL345 With RPi<a class="headerlink" href="#configure-adxl345-with-rpi" title="Permanent link">&para;</a></h4>
+<p>First, check and follow the instructions in the
+<a href="RPi_microcontroller.html">RPi Microcontroller document</a> to setup the
+"linux mcu" on the Raspberry Pi. This will configure a second Klipper
+instance that runs on your Pi.</p>
 <p>Make sure the Linux SPI driver is enabled by running <code>sudo
 raspi-config</code> and enabling SPI under the "Interfacing options" menu.</p>
 <p>Add the following to the printer.cfg file:</p>
@@ -2259,6 +2254,24 @@ you'll also want to modify your <code>printer.cfg</code> file to include this:</
 </code></pre></div>
 
 <p>Restart Klipper via the <code>RESTART</code> command.</p>
+<h4 id="configure-lis2dw-series">Configure LIS2DW series<a class="headerlink" href="#configure-lis2dw-series" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>[mcu lis]
+# Change &lt;mySerial&gt; to whatever you found above. For example,
+# usb-Klipper_rp2040_E661640843545B2E-if00
+serial: /dev/serial/by-id/usb-Klipper_rp2040_&lt;mySerial&gt;
+
+[lis2dw]
+cs_pin: lis:gpio1
+spi_bus: spi0a
+axes_map: x,z,y
+
+[resonance_tester]
+accel_chip: lis2dw
+probe_points:
+    # Somewhere slightly above the middle of your print bed
+    147,154, 20
+</code></pre></div>
+
 <h4 id="configure-mpu-60009000-series-with-rpi">Configure MPU-6000/9000 series With RPi<a class="headerlink" href="#configure-mpu-60009000-series-with-rpi" title="Permanent link">&para;</a></h4>
 <p>Make sure the Linux I2C driver is enabled and the baud rate is
 set to 400000 (see <a href="RPi_microcontroller.html#optional-enabling-i2c">Enabling I2C</a>
@@ -2292,7 +2305,7 @@ probe_points:
     100, 100, 20  # an example
 
 [static_digital_output pico_3V3pwm] # Improve power stability
-pin: pico:gpio23
+pins: pico:gpio23
 </code></pre></div>
 
 <h4 id="configure-mpu-9520-compatibles-with-avr">Configure MPU-9520 Compatibles with AVR<a class="headerlink" href="#configure-mpu-9520-compatibles-with-avr" title="Permanent link">&para;</a></h4>
