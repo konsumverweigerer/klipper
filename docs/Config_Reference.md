@@ -88,16 +88,22 @@ kinematics:
 #   deltesian, polar, winch, or none. This parameter must be specified.
 max_velocity:
 #   Maximum velocity (in mm/s) of the toolhead (relative to the
-#   print). This parameter must be specified.
+#   print). This value may be changed at runtime using the
+#   SET_VELOCITY_LIMIT command. This parameter must be specified.
 max_accel:
 #   Maximum acceleration (in mm/s^2) of the toolhead (relative to the
-#   print). This parameter must be specified.
+#   print). Although this parameter is described as a "maximum"
+#   acceleration, in practice most moves that accelerate or decelerate
+#   will do so at the rate specified here. The value specified here
+#   may be changed at runtime using the SET_VELOCITY_LIMIT command.
+#   This parameter must be specified.
 #max_accel_to_decel:
 #   A pseudo acceleration (in mm/s^2) controlling how fast the
 #   toolhead may go from acceleration to deceleration. It is used to
 #   reduce the top speed of short zig-zag moves (and thus reduce
-#   printer vibration from these moves). The default is half of
-#   max_accel.
+#   printer vibration from these moves). The value specified here may
+#   be changed at runtime using the SET_VELOCITY_LIMIT command. The
+#   default is half of max_accel.
 #square_corner_velocity: 5.0
 #   The maximum velocity (in mm/s) that the toolhead may travel a 90
 #   degree corner at. A non-zero value can reduce changes in extruder
@@ -107,7 +113,9 @@ max_accel:
 #   larger than 90 degrees will have a higher cornering velocity while
 #   corners with angles less than 90 degrees will have a lower
 #   cornering velocity. If this is set to zero then the toolhead will
-#   decelerate to zero at each corner. The default is 5mm/s.
+#   decelerate to zero at each corner. The value specified here may be
+#   changed at runtime using the SET_VELOCITY_LIMIT command. The
+#   default is 5mm/s.
 ```
 
 ### [stepper]
@@ -966,10 +974,18 @@ Visual Examples:
 #   be applied to change the amount of slope interpolated. Larger
 #   numbers will increase the amount of slope, which results in more
 #   curvature in the mesh. Default is .2.
+#zero_reference_position:
+#   An optional X,Y coordinate that specifies the location on the bed
+#   where Z = 0.  When this option is specified the mesh will be offset
+#   so that zero Z adjustment occurs at this location.  The default is
+#   no zero reference.
 #relative_reference_index:
-#   A point index in the mesh to reference all z values to. Enabling
-#   this parameter produces a mesh relative to the probed z position
-#   at the provided index.
+#   **DEPRECATED, use the "zero_reference_position" option**
+#   The legacy option superceded by the "zero reference position".
+#   Rather than a coordinate this option takes an integer "index" that
+#   refers to the location of one of the generated points. It is recommended
+#   to use the "zero_reference_position" instead of this option for new
+#   configurations. The default is no relative reference index.
 #faulty_region_1_min:
 #faulty_region_1_max:
 #   Optional points that define a faulty region.  See docs/Bed_Mesh.md
@@ -1638,6 +1654,27 @@ cs_pin:
 #   measurements.
 ```
 
+### [lis2dw]
+
+Support for LIS2DW accelerometers.
+
+```
+[lis2dw]
+cs_pin:
+#   The SPI enable pin for the sensor. This parameter must be provided.
+#spi_speed: 5000000
+#   The SPI speed (in hz) to use when communicating with the chip.
+#   The default is 5000000.
+#spi_bus:
+#spi_software_sclk_pin:
+#spi_software_mosi_pin:
+#spi_software_miso_pin:
+#   See the "common SPI settings" section for a description of the
+#   above parameters.
+#axes_map: x, y, z
+#   See the "adxl345" section for information on this parameter.
+```
+
 ### [mpu9250]
 
 Support for MPU-9250, MPU-9255, MPU-6515, MPU-6050, and MPU-6500
@@ -1650,6 +1687,8 @@ accelerometers (one may define any number of sections with an
 #   Default is 104 (0x68). If AD0 is high, it would be 0x69 instead.
 #i2c_mcu:
 #i2c_bus:
+#i2c_software_scl_pin:
+#i2c_software_sda_pin:
 #i2c_speed: 400000
 #   See the "common I2C settings" section for a description of the
 #   above parameters. The default "i2c_speed" is 400000.
@@ -1949,6 +1988,35 @@ z_offset:
 #   See the "probe" section for more information on the parameters above.
 ```
 
+### [axis_twist_compensation]
+
+A tool to compensate for inaccurate probe readings due to twist in X gantry. See
+the [Axis Twist Compensation Guide](Axis_Twist_Compensation.md) for more
+detailed information regarding symptoms, configuration and setup.
+
+```
+[axis_twist_compensation]
+#speed: 50
+#   The speed (in mm/s) of non-probing moves during the calibration.
+#   The default is 50.
+#horizontal_move_z: 5
+#   The height (in mm) that the head should be commanded to move to
+#   just prior to starting a probe operation. The default is 5.
+calibrate_start_x: 20
+#   Defines the minimum X coordinate of the calibration
+#   This should be the X coordinate that positions the nozzle at the starting
+#   calibration position. This parameter must be provided.
+calibrate_end_x: 200
+#   Defines the maximum X coordinate of the calibration
+#   This should be the X coordinate that positions the nozzle at the ending
+#   calibration position. This parameter must be provided.
+calibrate_y: 112.5
+#   Defines the Y coordinate of the calibration
+#   This should be the Y coordinate that positions the nozzle during the
+#   calibration process. This parameter must be provided and is recommended to
+#   be near the center of the bed
+```
+
 ## Additional stepper motors and extruders
 
 ### [stepper_z1]
@@ -1997,14 +2065,32 @@ for an example configuration.
 
 ### [dual_carriage]
 
-Support for cartesian printers with dual carriages on a single
-axis. The active carriage is set via the SET_DUAL_CARRIAGE extended
-g-code command. The "SET_DUAL_CARRIAGE CARRIAGE=1" command will
-activate the carriage defined in this section (CARRIAGE=0 will return
-activation to the primary carriage). Dual carriage support is
-typically combined with extra extruders - the SET_DUAL_CARRIAGE
-command is often called at the same time as the ACTIVATE_EXTRUDER
-command. Be sure to park the carriages during deactivation.
+Support for cartesian and hybrid_corexy/z printers with dual carriages
+on a single axis. The carriage mode can be set via the
+SET_DUAL_CARRIAGE extended g-code command. For example,
+"SET_DUAL_CARRIAGE CARRIAGE=1" command will activate the carriage defined
+in this section (CARRIAGE=0 will return activation to the primary carriage).
+Dual carriage support is typically combined with extra extruders - the
+SET_DUAL_CARRIAGE command is often called at the same time as the
+ACTIVATE_EXTRUDER command. Be sure to park the carriages during deactivation.
+Note that during G28 homing, typically the primary carriage is homed first
+followed by the carriage defined in the `[dual_carriage]` config section.
+However, the `[dual_carriage]` carriage will be homed first if both carriages
+home in a positive direction and the [dual_carriage] carriage has a
+`position_endstop` greater than the primary carriage, or if both carriages home
+in a negative direction and the `[dual_carriage]` carriage has a
+`position_endstop` less than the primary carriage.
+
+Additionally, one could use "SET_DUAL_CARRIAGE CARRIAGE=1 MODE=COPY" or
+"SET_DUAL_CARRIAGE CARRIAGE=1 MODE=MIRROR" commands to activate either copying
+or mirroring mode of the dual carriage, in which case it will follow the
+motion of the carriage 0 accordingly. These commands can be used to print
+two parts simultaneously - either two identical parts (in COPY mode) or
+mirrored parts (in MIRROR mode). Note that COPY and MIRROR modes also require
+appropriate configuration of the extruder on the dual carriage, which can
+typically be achieved with
+"SYNC_EXTRUDER_MOTION MOTION_QUEUE=extruder EXTRUDER=<dual_carriage_extruder>"
+or a similar command.
 
 See [sample-idex.cfg](../config/sample-idex.cfg) for an example
 configuration.
@@ -2014,6 +2100,15 @@ configuration.
 axis:
 #   The axis this extra carriage is on (either x or y). This parameter
 #   must be provided.
+#safe_distance:
+#   The minimum distance (in mm) to enforce between the dual and the primary
+#   carriages. If a G-Code command is executed that will bring the carriages
+#   closer than the specified limit, such a command will be rejected with an
+#   error. If safe_distance is not provided, it will be inferred from
+#   position_min and position_max for the dual and primary carriages. If set
+#   to 0 (or safe_distance is unset and position_min and position_max are
+#   identical for the primary and dual carraiges), the carriages proximity
+#   checks will be disabled.
 #step_pin:
 #dir_pin:
 #enable_pin:
@@ -2373,9 +2468,9 @@ sensor_pin:
 #   name in the above list.
 ```
 
-### BMP280/BME280/BME680 temperature sensor
+### BMP180/BMP280/BME280/BME680 temperature sensor
 
-BMP280/BME280/BME680 two wire interface (I2C) environmental sensors.
+BMP180/BMP280/BME280/BME680 two wire interface (I2C) environmental sensors.
 Note that these sensors are not intended for use with extruders and
 heater beds, but rather for monitoring ambient temperature (C),
 pressure (hPa), relative humidity and in case of the BME680 gas level.
@@ -2386,13 +2481,39 @@ temperature.
 ```
 sensor_type: BME280
 #i2c_address:
-#   Default is 118 (0x76). Some BME280 sensors have an address of 119
+#   Default is 118 (0x76). The BMP180 and some BME280 sensors have an address of 119
 #   (0x77).
+#i2c_mcu:
+#i2c_bus:
+#i2c_software_scl_pin:
+#i2c_software_sda_pin:
+#i2c_speed:
+#   See the "common I2C settings" section for a description of the
+#   above parameters.
+```
+
+### AHT10/AHT20/AHT21 temperature sensor
+
+AHT10/AHT20/AHT21 two wire interface (I2C) environmental sensors.
+Note that these sensors are not intended for use with extruders and
+heater beds, but rather for monitoring ambient temperature (C) and
+relative humidity. See
+[sample-macros.cfg](../config/sample-macros.cfg) for a gcode_macro
+that may be used to report humidity in addition to temperature.
+
+```
+sensor_type: AHT10
+#   Also use AHT10 for AHT20 and AHT21 sensors.
+#i2c_address:
+#   Default is 56 (0x38). Some AHT10 sensors give the option to use
+#   57 (0x39) by moving a resistor.
 #i2c_mcu:
 #i2c_bus:
 #i2c_speed:
 #   See the "common I2C settings" section for a description of the
 #   above parameters.
+#aht10_report_time:
+#   Interval in seconds between readings. Default is 30, minimum is 5
 ```
 
 ### HTU21D sensor
@@ -2411,6 +2532,8 @@ sensor_type:
 #   Default is 64 (0x40).
 #i2c_mcu:
 #i2c_bus:
+#i2c_software_scl_pin:
+#i2c_software_sda_pin:
 #i2c_speed:
 #   See the "common I2C settings" section for a description of the
 #   above parameters.
@@ -2444,6 +2567,8 @@ sensor_type: LM75
 #   (usually with jumpers or hard wired).
 #i2c_mcu:
 #i2c_bus:
+#i2c_software_scl_pin:
+#i2c_software_sda_pin:
 #i2c_speed:
 #   See the "common I2C settings" section for a description of the
 #   above parameters.
@@ -2454,7 +2579,7 @@ sensor_type: LM75
 
 ### Builtin micro-controller temperature sensor
 
-The atsam, atsamd, and stm32 micro-controllers contain an internal
+The atsam, atsamd, stm32 and rp2040 micro-controllers contain an internal
 temperature sensor. One can use the "temperature_mcu" sensor to
 monitor these temperatures.
 
@@ -2513,6 +2638,24 @@ serial_no:
 #   Interval in seconds between readings. Default is 3.0, with a minimum of 1.0
 #sensor_mcu:
 #   The micro-controller to read from. Must be the host_mcu
+```
+
+### Combined temperature sensor
+
+Combined temperature sensor is a virtual temperature sensor based on several other sensors. This sensor can be used with extruders, heater_generic and heater beds.
+
+```
+sensor_type: temperature_combined
+#sensor_list:
+#   Must be provided. List of sensors to combine to new "virtual"
+#   sensor.
+#   E.g. 'temperature_sensor sensor1,extruder,heater_bed'
+#combination_method:
+#   Must be provided. Combination method used for the sensor.
+#   Available options are 'max', 'min', 'mean'.
+#maximum_deviation:
+#   Must be provided. Maximum permissible deviation between the sensors
+#   to combine (e.g. 5 degrees). To disable it, use a large value (e.g. 999.9)
 ```
 
 ## Fans
@@ -2596,7 +2739,7 @@ whenever its associated heater is active. By default, a heater_fan has
 a shutdown_speed equal to max_power.
 
 ```
-[heater_fan my_nozzle_fan]
+[heater_fan heatbreak_cooling_fan]
 #pin:
 #max_power:
 #shutdown_speed:
@@ -2851,6 +2994,8 @@ PCA9533 LED support. The PCA9533 is used on the mightyboard.
 #   the PCA9533/1, 99 for the PCA9533/2. The default is 98.
 #i2c_mcu:
 #i2c_bus:
+#i2c_software_scl_pin:
+#i2c_software_sda_pin:
 #i2c_speed:
 #   See the "common I2C settings" section for a description of the
 #   above parameters.
@@ -2872,6 +3017,8 @@ PCA9632 LED support. The PCA9632 is used on the FlashForge Dreamer.
 #   96, 97, 98, or 99.  The default is 98.
 #i2c_mcu:
 #i2c_bus:
+#i2c_software_scl_pin:
+#i2c_software_sda_pin:
 #i2c_speed:
 #   See the "common I2C settings" section for a description of the
 #   above parameters.
@@ -3006,6 +3153,27 @@ pin:
 #   then the 'value' parameter can be specified using the desired
 #   amperage for the stepper. The default is to not scale the 'value'
 #   parameter.
+```
+
+### [pwm_tool]
+
+Pulse width modulation digital output pins capable of high speed
+updates (one may define any number of sections with an "output_pin"
+prefix). Pins configured here will be setup as output pins and one may
+modify them at run-time using "SET_PIN PIN=my_pin VALUE=.1" type
+extended [g-code commands](G-Codes.md#output_pin).
+
+```
+[pwm_tool my_tool]
+pin:
+#   The pin to configure as an output. This parameter must be provided.
+#value:
+#shutdown_value:
+#maximum_mcu_duration:
+#cycle_time: 0.100
+#hardware_pwm: False
+#scale:
+#   See the "output_pin" section for the definition of these parameters.
 ```
 
 ### [static_digital_output]
@@ -3186,6 +3354,7 @@ run_current:
 #   set, "stealthChop" mode will be enabled if the stepper motor
 #   velocity is below this value. The default is 0, which disables
 #   "stealthChop" mode.
+#driver_MULTISTEP_FILT: True
 #driver_IHOLDDELAY: 8
 #driver_TPOWERDOWN: 20
 #driver_TBL: 2
@@ -3227,6 +3396,7 @@ run_current:
 #   The address of the TMC2209 chip for UART messages (an integer
 #   between 0 and 3). This is typically used when multiple TMC2209
 #   chips are connected to the same UART pin. The default is zero.
+#driver_MULTISTEP_FILT: True
 #driver_IHOLDDELAY: 8
 #driver_TPOWERDOWN: 20
 #driver_TBL: 2
@@ -3329,7 +3499,7 @@ run_current:
 
 ### [tmc2240]
 
-Configure a TMC2240 stepper motor driver via SPI bus. To use this
+Configure a TMC2240 stepper motor driver via SPI bus or UART. To use this
 feature, define a config section with a "tmc2240" prefix followed by
 the name of the corresponding stepper config section (for example,
 "[tmc2240 stepper_x]").
@@ -3347,6 +3517,9 @@ cs_pin:
 #spi_software_miso_pin:
 #   See the "common SPI settings" section for a description of the
 #   above parameters.
+#uart_pin:
+#   The pin connected to the TMC2240 DIAG1/SW line. If this parameter
+#   is provided UART communication is used rather then SPI.
 #chain_position:
 #chain_length:
 #   These parameters configure an SPI daisy chain. The two parameters
@@ -3401,6 +3574,7 @@ run_current:
 #   to tune a motor with unbalanced coils. See the `Sine Wave Lookup Table`
 #   section in the datasheet for information about this field and how to tune
 #   it.
+#driver_MULTISTEP_FILT: True
 #driver_IHOLDDELAY: 6
 #driver_IRUNDELAY: 4
 #driver_TPOWERDOWN: 10
@@ -3516,6 +3690,7 @@ run_current:
 #   values used by the driver. The value must be specified as a decimal integer
 #   (hex form is not supported). In order to compute the wave table fields,
 #   see the tmc2130 "Calculation Sheet" from the Trinamic website.
+#driver_MULTISTEP_FILT: True
 #driver_IHOLDDELAY: 6
 #driver_TPOWERDOWN: 10
 #driver_TBL: 2
@@ -3544,6 +3719,10 @@ run_current:
 #driver_SEDN: 0
 #driver_SEIMIN: 0
 #driver_SFILT: 0
+#driver_DRVSTRENGTH: 0
+#driver_BBMCLKS: 4
+#driver_BBMTIME: 0
+#driver_FILT_ISENSE: 0
 #   Set the given register during the configuration of the TMC5160
 #   chip. This may be used to set custom motor parameters. The
 #   defaults for each parameter are next to the parameter name in the
@@ -3614,6 +3793,8 @@ i2c_address:
 #   parameter must be provided.
 #i2c_mcu:
 #i2c_bus:
+#i2c_software_scl_pin:
+#i2c_software_sda_pin:
 #i2c_speed:
 #   See the "common I2C settings" section for a description of the
 #   above parameters.
@@ -3650,6 +3831,8 @@ prefix).
 #   is 96.
 #i2c_mcu:
 #i2c_bus:
+#i2c_software_scl_pin:
+#i2c_software_sda_pin:
 #i2c_speed:
 #   See the "common I2C settings" section for a description of the
 #   above parameters.
@@ -3920,6 +4103,8 @@ lcd_type:
 #   Set to either "ssd1306" or "sh1106" for the given display type.
 #i2c_mcu:
 #i2c_bus:
+#i2c_software_scl_pin:
+#i2c_software_sda_pin:
 #i2c_speed:
 #   Optional parameters available for displays connected via an i2c
 #   bus. See the "common I2C settings" section for a description of
@@ -4264,6 +4449,9 @@ adc2:
 #   command.
 #min_diameter: 1.0
 #   Minimal diameter for trigger virtual filament_switch_sensor.
+#max_diameter:
+#   Maximum diameter for triggering virtual filament_switch_sensor.
+#   The default is default_nominal_filament_diameter + max_difference.
 #use_current_dia_while_delay: False
 #   Use the current diameter instead of the nominal diameter while
 #   the measurement delay has not run through.
@@ -4300,13 +4488,11 @@ i2c_address:
 #   113. This parameter must be provided.
 #i2c_mcu:
 #i2c_bus:
+#i2c_software_scl_pin:
+#i2c_software_sda_pin:
 #i2c_speed:
 #   See the "common I2C settings" section for a description of the
 #   above parameters.
-#i2c_bus:
-#   If the I2C implementation of your micro-controller supports
-#   multiple I2C busses, you may specify the bus name here. The
-#   default is to use the default micro-controller i2c bus.
 ```
 
 ### [samd_sercom]
@@ -4556,6 +4742,13 @@ via the `i2c_speed` parameter. All other Klipper micro-controllers use a
 #   If the micro-controller supports multiple I2C busses then one may
 #   specify the micro-controller bus name here. The default depends on
 #   the type of micro-controller.
+#i2c_software_scl_pin:
+#i2c_software_sda_pin:
+#   Specify these parameters to use micro-controller software based
+#   I2C "bit-banging" support. The two parameters should the two pins
+#   on the micro-controller to use for the scl and sda wires. The
+#   default is to use hardware based I2C support as specified by the
+#   i2c_bus parameter.
 #i2c_speed:
 #   The I2C speed (in Hz) to use when communicating with the device.
 #   The Klipper implementation on most micro-controllers is hard-coded
