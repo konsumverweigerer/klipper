@@ -18,7 +18,7 @@ class ExtruderStepper:
         self.stepper = stepper.PrinterStepper(config)
         ffi_main, ffi_lib = chelper.get_ffi()
         self.sk_extruder = ffi_main.gc(ffi_lib.extruder_stepper_alloc(),
-                                       ffi_lib.free)
+                                       ffi_lib.extruder_stepper_free)
         self.stepper.set_stepper_kinematics(self.sk_extruder)
         self.motion_queue = None
         # Register commands
@@ -38,12 +38,6 @@ class ExtruderStepper:
         gcode.register_mux_command("SYNC_EXTRUDER_MOTION", "EXTRUDER",
                                    self.name, self.cmd_SYNC_EXTRUDER_MOTION,
                                    desc=self.cmd_SYNC_EXTRUDER_MOTION_help)
-        gcode.register_mux_command("SET_EXTRUDER_STEP_DISTANCE", "EXTRUDER",
-                                   self.name, self.cmd_SET_E_STEP_DISTANCE,
-                                   desc=self.cmd_SET_E_STEP_DISTANCE_help)
-        gcode.register_mux_command("SYNC_STEPPER_TO_EXTRUDER", "STEPPER",
-                                   self.name, self.cmd_SYNC_STEPPER_TO_EXTRUDER,
-                                   desc=self.cmd_SYNC_STEPPER_TO_EXTRUDER_help)
     def _handle_connect(self):
         toolhead = self.printer.lookup_object('toolhead')
         toolhead.register_step_generator(self.stepper.generate_steps)
@@ -84,11 +78,14 @@ class ExtruderStepper:
         if not pressure_advance:
             new_smooth_time = 0.
         toolhead = self.printer.lookup_object("toolhead")
-        toolhead.note_step_generation_scan_time(new_smooth_time * .5,
-                                                old_delay=old_smooth_time * .5)
+        if new_smooth_time != old_smooth_time:
+            toolhead.note_step_generation_scan_time(
+                    new_smooth_time * .5, old_delay=old_smooth_time * .5)
         ffi_main, ffi_lib = chelper.get_ffi()
         espa = ffi_lib.extruder_set_pressure_advance
-        espa(self.sk_extruder, pressure_advance, new_smooth_time)
+        toolhead.register_lookahead_callback(
+            lambda print_time: espa(self.sk_extruder, print_time,
+                                    pressure_advance, new_smooth_time))
         self.pressure_advance = pressure_advance
         self.pressure_advance_smooth_time = smooth_time
     cmd_SET_PRESSURE_ADVANCE_help = "Set pressure advance parameters"
@@ -142,6 +139,8 @@ class ExtruderStepper:
     def cmd_SET_E_STEP_DISTANCE(self, gcmd):
         step_dist = gcmd.get_float('DISTANCE', None, above=0.)
         if step_dist is not None:
+            toolhead = self.printer.lookup_object('toolhead')
+            toolhead.flush_step_generation()
             rd, steps_per_rotation = self.stepper.get_rotation_distance()
             self.set_rotation_distance(step_dist * steps_per_rotation)
         else:
@@ -162,14 +161,9 @@ class PrinterExtruder:
         self.name = config.get_name()
         self.last_position = 0.
         # Setup hotend heater
-        shared_heater = config.get('shared_heater', None)
         pheaters = self.printer.load_object(config, 'heaters')
         gcode_id = 'T%d' % (extruder_num,)
-        if shared_heater is None:
-            self.heater = pheaters.setup_heater(config, gcode_id)
-        else:
-            config.deprecate('shared_heater')
-            self.heater = pheaters.lookup_heater(shared_heater)
+        self.heater = pheaters.setup_heater(config, gcode_id)
         # Setup kinematic checks
         self.nozzle_diameter = config.getfloat('nozzle_diameter', above=0.)
         filament_diameter = config.getfloat(
