@@ -5,6 +5,7 @@
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import math, logging, collections
 import mathutil
+import random
 from . import probe
 
 # A "stable position" is a 3-tuple containing the number of steps
@@ -82,12 +83,16 @@ class DeltaCalibrate:
                                             self.handle_connect)
         # Calculate default probing points
         radius = config.getfloat('radius', above=0.)
+        scatter_count = config.getint('scatter_count', minval=1, default=16)
         points = [(0., 0.)]
-        scatter = [.95, .90, .85, .70, .75, .80]
-        for i in range(6):
-            r = math.radians(90. + 60. * i)
-            dist = radius * scatter[i]
+        #scatter = [.95, .90, .85, .70, .75, .80]
+        scatter = [math.sqrt(random.uniform(.1,.95))
+                   for i in range(scatter_count)]
+        for i, s in enumerate(scatter):
+            r = math.radians(90. + (360. / len(scatter)) * i)
+            dist = radius * s
             points.append((math.cos(r) * dist, math.sin(r) * dist))
+        random.shuffle(points)
         self.probe_helper = probe.ProbePointsHelper(
             config, self.probe_finalize, default_points=points)
         self.probe_helper.minimum_points(3)

@@ -184,10 +184,15 @@ class DeltaCalibration:
                              for e, a in zip(endstops, arms)]
     def coordinate_descent_params(self, is_extended):
         # Determine adjustment parameters (for use with coordinate_descent)
-        adj_params = ('radius', 'angle_a', 'angle_b',
-                      'endstop_a', 'endstop_b', 'endstop_c')
+        adj_params = (
+                      'radius',
+                      'endstop_a', 'endstop_b', 'endstop_c'
+                     )
         if is_extended:
-            adj_params += ('arm_a', 'arm_b', 'arm_c')
+            adj_params += (
+                           'arm_a', 'arm_b', 'arm_c',
+                           'angle_a', 'angle_b'
+                          )
         params = { 'radius': self.radius }
         for i, axis in enumerate('abc'):
             params['angle_'+axis] = self.angles[i]

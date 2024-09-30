@@ -3,7 +3,7 @@
 # Copyright (C) 2018-2019 Eric Callahan <arksine.code@gmail.com>
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
-import logging, math, json, collections
+import logging, math, json, collections, random
 from . import probe
 
 PROFILE_VERSION = 1
@@ -346,6 +346,119 @@ class BedMeshCalibrate:
         self.gcode.register_command(
             'BED_MESH_CALIBRATE', self.cmd_BED_MESH_CALIBRATE,
             desc=self.cmd_BED_MESH_CALIBRATE_help)
+    def _generate_points(self, error):
+        x_cnt = self.mesh_config['x_count']
+        y_cnt = self.mesh_config['y_count']
+        min_x, min_y = self.mesh_min
+        max_x, max_y = self.mesh_max
+        x_dist = (max_x - min_x) / (x_cnt - 1)
+        y_dist = (max_y - min_y) / (y_cnt - 1)
+        # floor distances down to next hundredth
+        x_dist = math.floor(x_dist * 100) / 100
+        y_dist = math.floor(y_dist * 100) / 100
+        if x_dist < 1. or y_dist < 1.:
+            raise error("bed_mesh: min/max points too close together")
+
+        if self.radius is not None:
+            # round bed, min/max needs to be recalculated
+            y_dist = x_dist
+            new_r = (x_cnt // 2) * x_dist
+            min_x = min_y = -new_r
+            max_x = max_y = new_r
+        else:
+            # rectangular bed, only re-calc max_x
+            max_x = min_x + x_dist * (x_cnt - 1)
+        pos_y = min_y
+        points = []
+        for i in range(y_cnt):
+            for j in range(x_cnt):
+                if not i % 2:
+                    # move in positive directon
+                    pos_x = min_x + j * x_dist
+                else:
+                    # move in negative direction
+                    pos_x = max_x - j * x_dist
+                if self.radius is None:
+                    # rectangular bed, append
+                    points.append((pos_x, pos_y))
+                else:
+                    # round bed, check distance from origin
+                    dist_from_origin = math.sqrt(pos_x*pos_x + pos_y*pos_y)
+                    if dist_from_origin <= self.radius:
+                        points.append(
+                            (self.origin[0] + pos_x, self.origin[1] + pos_y))
+            pos_y += y_dist
+        # points = 2*points
+        # random.shuffle(points)
+        self.points = points
+        rri = self.relative_reference_index
+        if self.zero_ref_pos is None and rri is not None:
+            # Zero ref position needs to be initialized
+            if rri >= len(self.points):
+                raise error("bed_mesh: relative reference index out of range")
+            self.zero_ref_pos = points[rri]
+        if self.zero_ref_pos is None:
+            # Zero Reference Disabled
+            self.zero_reference_mode = ZrefMode.DISABLED
+        elif within(self.zero_ref_pos, self.mesh_min, self.mesh_max):
+            # Zero Reference position within mesh
+            self.zero_reference_mode = ZrefMode.IN_MESH
+        else:
+            # Zero Reference position outside of mesh
+            self.zero_reference_mode = ZrefMode.PROBE
+        if not self.faulty_regions:
+            return
+        self.substituted_indices.clear()
+        if self.zero_reference_mode == ZrefMode.PROBE:
+            # Cannot probe a reference within a faulty region
+            for min_c, max_c in self.faulty_regions:
+                if within(self.zero_ref_pos, min_c, max_c):
+                    opt = "zero_reference_position"
+                    if self.relative_reference_index is not None:
+                        opt = "relative_reference_index"
+                    raise error(
+                        "bed_mesh: Cannot probe zero reference position at "
+                        "(%.2f, %.2f) as it is located within a faulty region."
+                        " Check the value for option '%s'"
+                        % (self.zero_ref_pos[0], self.zero_ref_pos[1], opt,)
+                    )
+        # Check to see if any points fall within faulty regions
+        last_y = self.points[0][1]
+        is_reversed = False
+        for i, coord in enumerate(self.points):
+            if not isclose(coord[1], last_y):
+                is_reversed = not is_reversed
+            last_y = coord[1]
+            adj_coords = []
+            for min_c, max_c in self.faulty_regions:
+                if within(coord, min_c, max_c, tol=.00001):
+                    # Point lies within a faulty region
+                    adj_coords = [
+                        (min_c[0], coord[1]), (coord[0], min_c[1]),
+                        (coord[0], max_c[1]), (max_c[0], coord[1])]
+                    if is_reversed:
+                        # Swap first and last points for zig-zag pattern
+                        first = adj_coords[0]
+                        adj_coords[0] = adj_coords[-1]
+                        adj_coords[-1] = first
+                    break
+            if not adj_coords:
+                # coord is not located within a faulty region
+                continue
+            valid_coords = []
+            for ac in adj_coords:
+                # make sure that coordinates are within the mesh boundary
+                if self.radius is None:
+                    if within(ac, (min_x, min_y), (max_x, max_y), .000001):
+                        valid_coords.append(ac)
+                else:
+                    dist_from_origin = math.sqrt(ac[0]*ac[0] + ac[1]*ac[1])
+                    if dist_from_origin <= self.radius:
+                        valid_coords.append(ac)
+            if not valid_coords:
+                raise error("bed_mesh: Unable to generate coordinates"
+                            " for faulty region at index: %d" % (i))
+            self.substituted_indices[i] = valid_coords
     def print_generated_points(self, print_func):
         x_offset = y_offset = 0.
         probe = self.printer.lookup_object('probe', None)
