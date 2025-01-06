@@ -135,24 +135,6 @@ class ExtruderStepper:
         self.sync_to_extruder(ename)
         gcmd.respond_info("Extruder '%s' now syncing with '%s'"
                           % (self.name, ename))
-    cmd_SET_E_STEP_DISTANCE_help = "Set extruder step distance"
-    def cmd_SET_E_STEP_DISTANCE(self, gcmd):
-        step_dist = gcmd.get_float('DISTANCE', None, above=0.)
-        if step_dist is not None:
-            toolhead = self.printer.lookup_object('toolhead')
-            toolhead.flush_step_generation()
-            rd, steps_per_rotation = self.stepper.get_rotation_distance()
-            self.set_rotation_distance(step_dist * steps_per_rotation)
-        else:
-            step_dist = self.stepper.get_step_dist()
-        gcmd.respond_info("Extruder '%s' step distance set to %0.6f"
-                          % (self.name, step_dist))
-    cmd_SYNC_STEPPER_TO_EXTRUDER_help = "Set extruder stepper"
-    def cmd_SYNC_STEPPER_TO_EXTRUDER(self, gcmd):
-        ename = gcmd.get('EXTRUDER')
-        self.sync_to_extruder(ename)
-        gcmd.respond_info("Extruder '%s' now syncing with '%s'"
-                          % (self.name, ename))
 
 # Tracking for hotend heater, extrusion motion queue, and extruder stepper
 class PrinterExtruder:
